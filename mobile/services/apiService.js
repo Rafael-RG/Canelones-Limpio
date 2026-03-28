@@ -1,10 +1,12 @@
 // Configuración del API
 const API_CONFIG = {
-  // Cambia esta URL según tu configuración
-  // Para Android emulator usa: http://10.0.2.2:5001/api
-  // Para iOS simulator usa: http://localhost:5001/api
-  // Para dispositivo físico usa la IP de tu PC: http://192.168.x.x:5001/api
-  baseUrl: 'http://10.0.2.2:5001/api', // Usando HTTP en lugar de HTTPS para desarrollo
+  // Para dispositivo físico o pruebas con backend en Azure
+  baseUrl: 'https://testarauco-htfzbfacbcf3fcfs.eastus2-01.azurewebsites.net/api',
+  
+  // Para desarrollo local:
+  // Android emulator: http://10.0.2.2:5001/api
+  // iOS simulator: http://localhost:5001/api
+  // Dispositivo físico (misma red): http://192.168.x.x:5001/api
 };
 
 /**
