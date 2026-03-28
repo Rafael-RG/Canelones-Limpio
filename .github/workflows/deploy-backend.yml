@@ -27,20 +27,20 @@ jobs:
         dotnet-version: ${{ env.DOTNET_VERSION }}
 
     - name: 📦 Restore dependencies
-      run: dotnet restore
+      run: dotnet restore Backend.csproj
       working-directory: ${{ env.WORKING_DIRECTORY }}
 
     - name: 🔨 Build
-      run: dotnet build --configuration Release --no-restore
+      run: dotnet build Backend.csproj --configuration Release --no-restore
       working-directory: ${{ env.WORKING_DIRECTORY }}
 
     - name: 🧪 Test
-      run: dotnet test --no-restore --verbosity normal
+      run: dotnet test Backend.csproj --no-restore --verbosity normal
       working-directory: ${{ env.WORKING_DIRECTORY }}
       continue-on-error: true
 
     - name: 📤 Publish
-      run: dotnet publish --configuration Release --output ./publish --self-contained true --runtime linux-x64 /p:PublishReadyToRun=true
+      run: dotnet publish Backend.csproj --configuration Release --output ./publish --self-contained true --runtime linux-x64 /p:PublishReadyToRun=true
       working-directory: ${{ env.WORKING_DIRECTORY }}
 
     - name: 🚀 Deploy to Azure App Service
