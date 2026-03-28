@@ -3,6 +3,13 @@ using Backend.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// Configure Kestrel to listen on the PORT environment variable (required for Azure)
+builder.WebHost.ConfigureKestrel(options =>
+{
+    var port = Environment.GetEnvironmentVariable("PORT") ?? "8080";
+    options.ListenAnyIP(int.Parse(port));
+});
+
 // Add services to the container
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
@@ -39,17 +46,12 @@ builder.Services.AddSingleton<DashboardService>();
 var app = builder.Build();
 
 // Configure the HTTP request pipeline
-if (app.Environment.IsDevelopment())
+app.UseSwagger();
+app.UseSwaggerUI(c =>
 {
-    app.UseSwagger();
-    app.UseSwaggerUI(c =>
-    {
-        c.SwaggerEndpoint("/swagger/v1/swagger.json", "Canelones Pro API V1");
-        c.RoutePrefix = string.Empty; // Swagger UI en la raíz
-    });
-}
-
-app.UseHttpsRedirection();
+    c.SwaggerEndpoint("/swagger/v1/swagger.json", "Canelones Pro API V1");
+    c.RoutePrefix = "swagger"; // Swagger UI en /swagger
+});
 
 // Enable CORS
 app.UseCors("AllowAll");
