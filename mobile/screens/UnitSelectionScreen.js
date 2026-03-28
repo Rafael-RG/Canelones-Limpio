@@ -1,10 +1,83 @@
-import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, ScrollView } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, TouchableOpacity, StyleSheet, ScrollView, ActivityIndicator, Alert } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import MobileNav from '../components/MobileNav';
-import { MOCK_UNITS } from '../data/mockData';
+import { useVehicles } from '../hooks/useApi';
+import apiService from '../services/apiService';
 
-export default function UnitSelectionScreen({ navigation }) {
+export default function UnitSelectionScreen({ navigation, route }) {
+  const { collector } = route.params || {};
+  const { vehicles, loading, error } = useVehicles();
+  const [availableVehicles, setAvailableVehicles] = useState([]);
+  const [selecting, setSelecting] = useState(false);
+
+  useEffect(() => {
+    if (vehicles) {
+      // Filtrar solo vehículos operativos (disponibles para uso)
+      setAvailableVehicles(vehicles.filter(v => v.status === 'Operativo'));
+    }
+  }, [vehicles]);
+
+  const handleSelectVehicle = async (vehicle) => {
+    if (!collector) {
+      Alert.alert('Error', 'No se encontró información del recolector');
+      return;
+    }
+
+    try {
+      setSelecting(true);
+
+      // Crear sesión de recolección
+      const session = await apiService.createSession({
+        collectorId: collector.id,
+        collectorName: collector.name,
+        vehicleId: vehicle.id,
+        startTime: new Date().toISOString(),
+        status: 'Activa',
+        zone: 'Zona General', // Sin campo assignedZone en vehicle
+      });
+
+      // Navegar a sesión activa
+      navigation.navigate('CollectorSession', { 
+        collector, 
+        vehicle, 
+        session 
+      });
+    } catch (err) {
+      Alert.alert(
+        'Error',
+        'No se pudo iniciar la sesión: ' + err.message,
+        [{ text: 'OK' }]
+      );
+    } finally {
+      setSelecting(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <View style={[styles.container, styles.centerContent]}>
+        <ActivityIndicator size="large" color="#008a45" />
+        <Text style={styles.loadingText}>Cargando vehículos...</Text>
+      </View>
+    );
+  }
+
+  if (error) {
+    return (
+      <View style={[styles.container, styles.centerContent]}>
+        <MaterialIcons name="error-outline" size={48} color="#dc2626" />
+        <Text style={styles.errorText}>{error}</Text>
+        <TouchableOpacity 
+          style={styles.retryButton}
+          onPress={() => navigation.goBack()}
+        >
+          <Text style={styles.retryButtonText}>Volver</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
+
   return (
     <View style={styles.container}>
       <View style={styles.header}>
@@ -18,45 +91,58 @@ export default function UnitSelectionScreen({ navigation }) {
       </View>
 
       <ScrollView style={styles.content} contentContainerStyle={styles.scrollContent}>
-        {MOCK_UNITS.slice(0, 2).map((unit) => (
-          <View key={unit.id} style={styles.unitCard}>
-            <View style={styles.unitRow}>
-              <View style={styles.unitImage}>
-                <MaterialIcons name="local-shipping" size={40} color="rgba(0,138,69,0.4)" />
-              </View>
-              
-              <View style={styles.unitInfo}>
-                <View style={styles.unitHeader}>
-                  <Text style={styles.unitTitle}>Unidad {unit.id.split('-')[1]}</Text>
-                  <View style={styles.availableBadge}>
-                    <Text style={styles.availableBadgeText}>Disponible</Text>
-                  </View>
-                </View>
-                
-                <Text style={styles.unitType}>{unit.type}</Text>
-                
-                <View style={styles.unitStats}>
-                  <View style={styles.statItem}>
-                    <MaterialIcons name="ev-station" size={16} color="#64748b" />
-                    <Text style={styles.statText}>85%</Text>
-                  </View>
-                  <View style={styles.statItem}>
-                    <MaterialIcons name="straighten" size={16} color="#64748b" />
-                    <Text style={styles.statText}>12k km</Text>
-                  </View>
-                </View>
-              </View>
-            </View>
-
-            <TouchableOpacity
-              style={styles.selectButton}
-              onPress={() => navigation.navigate('CollectorSession')}
-            >
-              <MaterialIcons name="check-circle" size={20} color="#fff" />
-              <Text style={styles.selectButtonText}>Seleccionar Unidad</Text>
-            </TouchableOpacity>
+        {availableVehicles.length === 0 ? (
+          <View style={styles.emptyContainer}>
+            <MaterialIcons name="local-shipping" size={64} color="#cbd5e1" />
+            <Text style={styles.emptyText}>No hay vehículos operativos</Text>
+            <Text style={styles.emptySubtext}>Todos los vehículos están en uso o mantenimiento</Text>
           </View>
-        ))}
+        ) : (
+          availableVehicles.map((vehicle) => (
+            <View key={vehicle.id} style={styles.unitCard}>
+              <View style={styles.unitRow}>
+                <View style={styles.unitImage}>
+                  <MaterialIcons name="local-shipping" size={40} color="rgba(0,138,69,0.4)" />
+                </View>
+                
+                <View style={styles.unitInfo}>
+                  <View style={styles.unitHeader}>
+                    <Text style={styles.unitTitle}>{vehicle.id}</Text>
+                    <View style={[
+                      styles.availableBadge,
+                      { backgroundColor: vehicle.statusColor === 'green' ? '#dcfce7' : '#f3f4f6' }
+                    ]}>
+                      <Text style={[
+                        styles.availableBadgeText,
+                        { color: vehicle.statusColor === 'green' ? '#16a34a' : '#6b7280' }
+                      ]}>{vehicle.status}</Text>
+                    </View>
+                  </View>
+                  
+                  <Text style={styles.unitType}>{vehicle.type}</Text>
+                  
+                  <View style={styles.unitStats}>
+                    <View style={styles.statItem}>
+                      <MaterialIcons name="scale" size={16} color="#64748b" />
+                      <Text style={styles.statText}>{vehicle.capacity}</Text>
+                    </View>
+                  </View>
+                </View>
+              </View>
+
+              <TouchableOpacity
+                style={[styles.selectButton, selecting && styles.selectButtonDisabled]}
+                onPress={() => handleSelectVehicle(vehicle)}
+                disabled={selecting}
+              >
+                <MaterialIcons name="check-circle" size={20} color="#fff" />
+                <Text style={styles.selectButtonText}>
+                  {selecting ? 'Iniciando...' : 'Seleccionar Unidad'}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          ))
+        )}
       </ScrollView>
 
       <MobileNav navigation={navigation} currentRoute="Home" />
@@ -96,6 +182,52 @@ const styles = StyleSheet.create({
     padding: 16,
     paddingBottom: 100,
     gap: 16,
+  },
+  centerContent: {
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingText: {
+    marginTop: 16,
+    fontSize: 16,
+    color: '#64748b',
+  },
+  errorText: {
+    marginTop: 16,
+    fontSize: 16,
+    color: '#dc2626',
+    textAlign: 'center',
+    paddingHorizontal: 32,
+  },
+  retryButton: {
+    marginTop: 24,
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    backgroundColor: '#008a45',
+    borderRadius: 8,
+  },
+  retryButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  emptyContainer: {
+    alignItems: 'center',
+    paddingVertical: 64,
+  },
+  emptyText: {
+    marginTop: 16,
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#64748b',
+  },
+  emptySubtext: {
+    marginTop: 8,
+    fontSize: 14,
+    color: '#94a3b8',
+  },
+  selectButtonDisabled: {
+    opacity: 0.5,
   },
   unitCard: {
     backgroundColor: '#fff',

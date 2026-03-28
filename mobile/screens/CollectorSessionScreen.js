@@ -1,28 +1,90 @@
-import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, ScrollView, Image } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, TouchableOpacity, StyleSheet, ScrollView, Alert } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import MobileNav from '../components/MobileNav';
+import { useRatings } from '../hooks/useApi';
+import apiService from '../services/apiService';
 
-export default function CollectorSessionScreen({ navigation }) {
+export default function CollectorSessionScreen({ navigation, route }) {
+  const { collector, vehicle, session } = route.params || {};
+  const { ratings, refetch } = useRatings(session?.id);
+  const [sessionData, setSessionData] = useState(session);
+
+  useEffect(() => {
+    // Refrescar calificaciones cada 10 segundos
+    const interval = setInterval(() => {
+      refetch();
+    }, 10000);
+
+    return () => clearInterval(interval);
+  }, []);
+
+  const handleFinishSession = async () => {
+    Alert.alert(
+      'Finalizar Sesión',
+      '¿Desea finalizar la jornada de recolección?',
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Finalizar',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await apiService.finishSession(session.id);
+
+              Alert.alert(
+                'Sesión Finalizada',
+                'La jornada ha sido completada exitosamente',
+                [{ text: 'OK', onPress: () => navigation.navigate('Home') }]
+              );
+            } catch (err) {
+              Alert.alert('Error', 'No se pudo finalizar la sesión: ' + err.message);
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  if (!collector || !vehicle || !session) {
+    return (
+      <View style={[styles.container, styles.centerContent]}>
+        <MaterialIcons name="error-outline" size={48} color="#dc2626" />
+        <Text style={styles.errorText}>No se encontró información de la sesión</Text>
+        <TouchableOpacity 
+          style={styles.backButton}
+          onPress={() => navigation.navigate('Home')}
+        >
+          <Text style={styles.backButtonText}>Volver al Inicio</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
+
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <TouchableOpacity>
-          <MaterialIcons name="menu" size={30} color="#008a45" />
+        <TouchableOpacity onPress={handleFinishSession}>
+          <MaterialIcons name="logout" size={30} color="#dc2626" />
         </TouchableOpacity>
         <View style={styles.headerCenter}>
           <Text style={styles.headerSmall}>INTENDENCIA DE CANELONES</Text>
           <Text style={styles.headerTitle}>Sesión Activa</Text>
         </View>
+        <TouchableOpacity onPress={refetch}>
+          <MaterialIcons name="refresh" size={30} color="#008a45" />
+        </TouchableOpacity>
       </View>
 
       <ScrollView style={styles.content} contentContainerStyle={styles.scrollContent}>
         <View style={styles.card}>
-          <View style={styles.profileImage} />
+          <View style={styles.profileImage}>
+            <MaterialIcons name="person" size={40} color="#008a45" />
+          </View>
           <View>
             <Text style={styles.cardLabel}>Recolector Identificado</Text>
-            <Text style={styles.cardName}>Juan Pérez</Text>
-            <Text style={styles.cardId}>ID Funcionario: #88492</Text>
+            <Text style={styles.cardName}>{collector.name}</Text>
+            <Text style={styles.cardId}>ID: {collector.id}</Text>
           </View>
         </View>
 
@@ -32,33 +94,51 @@ export default function CollectorSessionScreen({ navigation }) {
           </View>
           <View>
             <Text style={styles.cardLabel}>Unidad de Transporte</Text>
-            <Text style={styles.cardName}>Unidad 405</Text>
-            <Text style={styles.cardId}>Sector B - Ruta Urbana</Text>
+            <Text style={styles.cardName}>{vehicle.id}</Text>
+            <Text style={styles.cardId}>{vehicle.type} - {vehicle.capacity}</Text>
+          </View>
+        </View>
+
+        <View style={styles.statsCard}>
+          <Text style={styles.statsTitle}>Estadísticas de Hoy</Text>
+          <View style={styles.statsGrid}>
+            <View style={styles.statBox}>
+              <MaterialIcons name="home" size={32} color="#008a45" />
+              <Text style={styles.statNumber}>{ratings?.length || 0}</Text>
+              <Text style={styles.statLabel}>Hogares</Text>
+            </View>
+            <View style={styles.statBox}>
+              <MaterialIcons name="star" size={32} color="#f59e0b" />
+              <Text style={styles.statNumber}>
+                {ratings?.length > 0 
+                  ? (() => {
+                      const ratingValues = { good: 5, regular: 3, bad: 1 };
+                      const total = ratings.reduce((sum, r) => sum + (ratingValues[r.rating] || 0), 0);
+                      return (total / ratings.length).toFixed(1);
+                    })()
+                  : '0.0'}
+              </Text>
+              <Text style={styles.statLabel}>Promedio</Text>
+            </View>
           </View>
         </View>
 
         <TouchableOpacity
           style={styles.scanButton}
-          onPress={() => navigation.navigate('HomeScanner')}
+          onPress={() => navigation.navigate('HomeScanner', { collector, vehicle, session })}
         >
           <MaterialIcons name="qr-code-scanner" size={50} color="#fff" />
           <Text style={styles.scanButtonTitle}>Identificar Hogar</Text>
           <Text style={styles.scanButtonSubtitle}>Escanear QR de vivienda</Text>
         </TouchableOpacity>
 
-        <View style={styles.routeCard}>
-          <View style={styles.routeHeader}>
-            <Text style={styles.routeTitle}>RUTA ACTIVA: BARRIO SUR</Text>
-            <MaterialIcons name="location-on" size={24} color="#008a45" />
-          </View>
-          <View style={styles.mapContainer}>
-            <View style={styles.mapPlaceholder}>
-              <View style={styles.locationPin}>
-                <View style={styles.locationDot} />
-              </View>
-            </View>
-          </View>
-        </View>
+        <TouchableOpacity
+          style={styles.historyButton}
+          onPress={() => navigation.navigate('History', { collector })}
+        >
+          <MaterialIcons name="history" size={24} color="#008a45" />
+          <Text style={styles.historyButtonText}>Ver Historial</Text>
+        </TouchableOpacity>
       </ScrollView>
 
       <MobileNav navigation={navigation} currentRoute="Home" />
@@ -70,6 +150,30 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#f5f8f7',
+  },
+  centerContent: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 32,
+  },
+  errorText: {
+    marginTop: 16,
+    fontSize: 16,
+    color: '#dc2626',
+    textAlign: 'center',
+  },
+  backButton: {
+    marginTop: 24,
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    backgroundColor: '#008a45',
+    borderRadius: 8,
+  },
+  backButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: 'bold',
   },
   header: {
     flexDirection: 'row',
@@ -123,9 +227,10 @@ const styles = StyleSheet.create({
     width: 80,
     height: 80,
     borderRadius: 40,
-    borderWidth: 4,
-    borderColor: 'rgba(0, 138, 69, 0.2)',
-    backgroundColor: '#e2e8f0',
+    backgroundColor: '#e0f2e9',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 16,
   },
   unitIcon: {
     width: 80,
@@ -172,6 +277,62 @@ const styles = StyleSheet.create({
   scanButtonSubtitle: {
     fontSize: 14,
     color: 'rgba(255, 255, 255, 0.8)',
+  statsCard: {
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    padding: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+    marginBottom: 16,
+  },
+  statsTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#1e293b',
+    marginBottom: 16,
+  },
+  statsGrid: {
+    flexDirection: 'row',
+    gap: 16,
+  },
+  statBox: {
+    flex: 1,
+    alignItems: 'center',
+    padding: 16,
+    backgroundColor: '#f8fafc',
+    borderRadius: 8,
+  },
+  statNumber: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#1e293b',
+    marginTop: 8,
+  },
+  statLabel: {
+    fontSize: 12,
+    color: '#64748b',
+    marginTop: 4,
+  },
+  historyButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    backgroundColor: '#fff',
+    paddingVertical: 16,
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: '#008a45',
+    marginBottom: 16,
+  },
+  historyButtonText: {
+    color: '#008a45',
+    fontWeight: 'bold',
+    fontSize: 16,
+  },
   },
   routeCard: {
     backgroundColor: '#fff',

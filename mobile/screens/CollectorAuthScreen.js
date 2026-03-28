@@ -1,9 +1,38 @@
-import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import React, { useState } from 'react';
+import { View, Text, TouchableOpacity, StyleSheet, TextInput, Alert } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import MobileNav from '../components/MobileNav';
+import { useCollectors } from '../hooks/useApi';
 
 export default function CollectorAuthScreen({ navigation }) {
+  const [qrCode, setQrCode] = useState('');
+  const [isScanning, setIsScanning] = useState(false);
+  const { authenticateCollector, error } = useCollectors();
+
+  const handleAuthenticate = async (code) => {
+    try {
+      setIsScanning(true);
+      const collector = await authenticateCollector(code || qrCode);
+      
+      // Navegar a selección de unidad, pasando datos del recolector
+      navigation.navigate('UnitSelection', { collector });
+    } catch (err) {
+      Alert.alert(
+        'Error de Autenticación',
+        err.message || 'No se pudo autenticar el recolector',
+        [{ text: 'OK' }]
+      );
+    } finally {
+      setIsScanning(false);
+    }
+  };
+
+  const simulateScan = () => {
+    // Para pruebas, genera un código simulado o usa uno conocido
+    const mockCode = 'RM'; // Usa un ID real de tu base de datos
+    handleAuthenticate(mockCode);
+  };
+
   return (
     <View style={styles.container}>
       <View style={styles.header}>
@@ -22,13 +51,14 @@ export default function CollectorAuthScreen({ navigation }) {
         <View style={styles.textSection}>
           <Text style={styles.title}>Identificación</Text>
           <Text style={styles.description}>
-            Escanee su código QR de recolector para iniciar la jornada
+            Ingrese su ID de recolector para iniciar la jornada (ej: RM, EB)
           </Text>
         </View>
 
         <TouchableOpacity
           style={styles.scannerFrame}
-          onPress={() => navigation.navigate('UnitSelection')}
+          onPress={simulateScan}
+          disabled={isScanning}
         >
           <View style={styles.scannerBorder}>
             <View style={[styles.corner, styles.cornerTopLeft]} />
@@ -44,15 +74,41 @@ export default function CollectorAuthScreen({ navigation }) {
         </TouchableOpacity>
 
         <View style={styles.buttonsContainer}>
-          <TouchableOpacity style={styles.primaryButton}>
+          <TouchableOpacity 
+            style={styles.primaryButton}
+            onPress={simulateScan}
+            disabled={isScanning}
+          >
             <MaterialIcons name="qr-code-scanner" size={24} color="#fff" />
-            <Text style={styles.primaryButtonText}>ESCANEANDO...</Text>
+            <Text style={styles.primaryButtonText}>
+              {isScanning ? 'AUTENTICANDO...' : 'ESCANEAR CÓDIGO'}
+            </Text>
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.secondaryButton}>
-            <Text style={styles.secondaryButtonText}>INGRESAR CÓDIGO MANUAL</Text>
-          </TouchableOpacity>
+          <View style={styles.manualInputContainer}>
+            <TextInput
+              style={styles.manualInput}
+              placeholder="ID de recolector (ej: RM)"
+              value={qrCode}
+              onChangeText={setQrCode}
+              autoCapitalize="characters"
+            />
+            <TouchableOpacity 
+              style={styles.manualButton}
+              onPress={() => handleAuthenticate()}
+              disabled={!qrCode || isScanning}
+            >
+              <Text style={styles.secondaryButtonText}>INGRESAR</Text>
+            </TouchableOpacity>
+          </View>
         </View>
+
+        {error && (
+          <View style={styles.errorContainer}>
+            <MaterialIcons name="error-outline" size={20} color="#dc2626" />
+            <Text style={styles.errorText}>{error}</Text>
+          </View>
+        )}
 
         <View style={styles.secureInfo}>
           <MaterialIcons name="lock" size={16} color="#94a3b8" />
@@ -219,6 +275,27 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     fontSize: 16,
   },
+  manualInputContainer: {
+    flexDirection: 'row',
+    gap: 8,
+    width: '100%',
+  },
+  manualInput: {
+    flex: 1,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    backgroundColor: '#fff',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    fontSize: 16,
+  },
+  manualButton: {
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    borderRadius: 8,
+    backgroundColor: '#f1f5f9',
+  },
   secondaryButton: {
     backgroundColor: '#fff',
     borderWidth: 2,
@@ -231,6 +308,20 @@ const styles = StyleSheet.create({
     color: '#008a45',
     fontWeight: '600',
     fontSize: 16,
+  },
+  errorContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    padding: 12,
+    backgroundColor: '#fee2e2',
+    borderRadius: 8,
+    marginTop: 16,
+  },
+  errorText: {
+    flex: 1,
+    color: '#dc2626',
+    fontSize: 14,
   },
   secureInfo: {
     flexDirection: 'row',

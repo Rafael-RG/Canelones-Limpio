@@ -1,0 +1,260 @@
+// Configuración del API
+const API_CONFIG = {
+  // Cambia esta URL según tu configuración
+  // Para Android emulator usa: http://10.0.2.2:5001/api
+  // Para iOS simulator usa: http://localhost:5001/api
+  // Para dispositivo físico usa la IP de tu PC: http://192.168.x.x:5001/api
+  baseUrl: 'http://10.0.2.2:5001/api', // Usando HTTP en lugar de HTTPS para desarrollo
+};
+
+/**
+ * Cliente HTTP para interactuar con el backend
+ */
+class ApiService {
+  constructor() {
+    this.baseUrl = API_CONFIG.baseUrl;
+  }
+
+  /**
+   * Realizar petición HTTP
+   */
+  async request(endpoint, options = {}) {
+    const url = `${this.baseUrl}${endpoint}`;
+    
+    const defaultOptions = {
+      headers: {
+        'Content-Type': 'application/json',
+        ...options.headers,
+      },
+    };
+
+    try {
+      const response = await fetch(url, { ...defaultOptions, ...options });
+      
+      if (!response.ok) {
+        const error = await response.text();
+        throw new Error(error || `HTTP ${response.status}`);
+      }
+
+      const text = await response.text();
+      return text ? JSON.parse(text) : null;
+    } catch (error) {
+      console.error(`API Error [${endpoint}]:`, error);
+      throw error;
+    }
+  }
+
+  // ============ RECOLECTORES ============
+  
+  async getCollectors() {
+    return this.request('/collectors');
+  }
+
+  async getCollector(id) {
+    return this.request(`/collectors/${id}`);
+  }
+
+  async createCollector(data) {
+    return this.request('/collectors', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async updateCollector(id, data) {
+    return this.request(`/collectors/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async deleteCollector(id) {
+    return this.request(`/collectors/${id}`, {
+      method: 'DELETE',
+    });
+  }
+
+  async authenticateCollector(collectorId) {
+    // Buscar recolector por ID
+    const collectors = await this.getCollectors();
+    const collector = collectors.find(c => c.id === collectorId || c.id === collectorId.toUpperCase());
+    
+    if (!collector) {
+      throw new Error('Recolector no encontrado con ID: ' + collectorId);
+    }
+
+    if (collector.status !== 'Activo') {
+      throw new Error('Recolector no está activo (Estado: ' + collector.status + ')');
+    }
+
+    return collector;
+  }
+
+  // ============ VEHÍCULOS ============
+  
+  async getVehicles() {
+    return this.request('/vehicles');
+  }
+
+  async getVehicle(id) {
+    return this.request(`/vehicles/${id}`);
+  }
+
+  async getAvailableVehicles() {
+    const vehicles = await this.getVehicles();
+    return vehicles.filter(v => v.status === 'Operativo');
+  }
+
+  async createVehicle(data) {
+    return this.request('/vehicles', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async updateVehicle(id, data) {
+    return this.request(`/vehicles/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async deleteVehicle(id) {
+    return this.request(`/vehicles/${id}`, {
+      method: 'DELETE',
+    });
+  }
+
+  // ============ HOGARES ============
+  
+  async getHouseholds() {
+    return this.request('/households');
+  }
+
+  async getHousehold(id) {
+    return this.request(`/households/${id}`);
+  }
+
+  async getHouseholdByQr(code) {
+    const households = await this.getHouseholds();
+    return households.find(h => 
+      h.qrCode === code || 
+      h.qrCode === code.toUpperCase() ||
+      h.id === code ||
+      h.id === code.toUpperCase()
+    );
+  }
+
+  async createHousehold(data) {
+    return this.request('/households', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async updateHousehold(id, data) {
+    return this.request(`/households/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async deleteHousehold(id) {
+    return this.request(`/households/${id}`, {
+      method: 'DELETE',
+    });
+  }
+
+  // ============ SESIONES DE RECOLECCIÓN ============
+  
+  async getSessions() {
+    return this.request('/sessions');
+  }
+
+  async getSession(id) {
+    return this.request(`/sessions/${id}`);
+  }
+
+  async createSession(data) {
+    return this.request('/sessions', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async updateSession(id, data) {
+    return this.request(`/sessions/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async finishSession(id) {
+    const session = await this.getSession(id);
+    return this.updateSession(id, {
+      ...session,
+      endTime: new Date().toISOString(),
+      status: 'Completada',
+    });
+  }
+
+  async deleteSession(id) {
+    return this.request(`/sessions/${id}`, {
+      method: 'DELETE',
+    });
+  }
+
+  async getSessionsByCollector(collectorId) {
+    const sessions = await this.getSessions();
+    return sessions.filter(s => s.collectorId === collectorId);
+  }
+
+  // ============ CALIFICACIONES ============
+  
+  async getRatings() {
+    return this.request('/ratings');
+  }
+
+  async getRating(id) {
+    return this.request(`/ratings/${id}`);
+  }
+
+  async createRating(data) {
+    return this.request('/ratings', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async updateRating(id, data) {
+    return this.request(`/ratings/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async deleteRating(id) {
+    return this.request(`/ratings/${id}`, {
+      method: 'DELETE',
+    });
+  }
+
+  async getRatingsByHousehold(householdId) {
+    const ratings = await this.getRatings();
+    return ratings.filter(r => r.householdId === householdId);
+  }
+
+  async getRatingsBySession(sessionId) {
+    const ratings = await this.getRatings();
+    return ratings.filter(r => r.sessionId === sessionId);
+  }
+
+  // ============ DASHBOARD ============
+  
+  async getDashboardStats() {
+    return this.request('/dashboard/stats');
+  }
+}
+
+// Exportar instancia única
+export default new ApiService();

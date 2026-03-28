@@ -1,9 +1,53 @@
-import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, TextInput } from 'react-native';
+import React, { useState } from 'react';
+import { View, Text, TouchableOpacity, StyleSheet, TextInput, Alert } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import MobileNav from '../components/MobileNav';
+import { useHouseholds } from '../hooks/useApi';
 
-export default function HomeScannerScreen({ navigation }) {
+export default function HomeScannerScreen({ navigation, route }) {
+  const { collector, vehicle, session } = route.params || {};
+  const [qrCode, setQrCode] = useState('');
+  const [isScanning, setIsScanning] = useState(false);
+  const { getHouseholdByQr, error } = useHouseholds();
+
+  const handleScanHousehold = async (code) => {
+    try {
+      setIsScanning(true);
+      const household = await getHouseholdByQr(code || qrCode);
+      
+      if (!household) {
+        Alert.alert(
+          'Hogar No Encontrado',
+          'El código QR no corresponde a ningún hogar registrado',
+          [{ text: 'OK' }]
+        );
+        return;
+      }
+
+      // Navegar a pantalla de calificación
+      navigation.navigate('HouseholdRating', { 
+        collector, 
+        vehicle, 
+        session, 
+        household 
+      });
+    } catch (err) {
+      Alert.alert(
+        'Error al Escanear',
+        err.message || 'No se pudo identificar el hogar',
+        [{ text: 'OK' }]
+      );
+    } finally {
+      setIsScanning(false);
+    }
+  };
+
+  const simulateScan = () => {
+    // Para pruebas, usa un ID o QR real de tu base de datos
+    const mockCode = 'ID-8829-X'; // Reemplaza con un ID real
+    handleScanHousehold(mockCode);
+  };
+
   return (
     <View style={styles.container}>
       <View style={styles.header}>
@@ -17,12 +61,13 @@ export default function HomeScannerScreen({ navigation }) {
       <TouchableOpacity
         style={styles.content}
         activeOpacity={0.9}
-        onPress={() => navigation.navigate('HouseholdRating')}
+        onPress={simulateScan}
+        disabled={isScanning}
       >
         <View style={styles.textSection}>
           <Text style={styles.title}>Escanee QR de Vivienda</Text>
           <Text style={styles.description}>
-            Apunte la cámara al código del domicilio
+            {isScanning ? 'Identificando hogar...' : 'Apunte la cámara al código del domicilio'}
           </Text>
         </View>
 
@@ -34,7 +79,11 @@ export default function HomeScannerScreen({ navigation }) {
             <View style={[styles.corner, styles.cornerBottomRight]} />
             
             <View style={styles.scannerContent}>
-              <MaterialIcons name="qr-code" size={120} color="rgba(0,138,69,0.3)" />
+              <MaterialIcons 
+                name="qr-code" 
+                size={120} 
+                color={isScanning ? "rgba(0,138,69,0.7)" : "rgba(0,138,69,0.3)"} 
+              />
             </View>
 
             <View style={styles.scannerOverlay}>
@@ -43,7 +92,7 @@ export default function HomeScannerScreen({ navigation }) {
                 <View style={[styles.frameCorner, styles.frameTopRight]} />
                 <View style={[styles.frameCorner, styles.frameBottomLeft]} />
                 <View style={[styles.frameCorner, styles.frameBottomRight]} />
-                <View style={styles.scanLine} />
+                {!isScanning && <View style={styles.scanLine} />}
               </View>
             </View>
           </View>
@@ -54,11 +103,28 @@ export default function HomeScannerScreen({ navigation }) {
             style={styles.input}
             placeholder="Ingrese código manual"
             placeholderTextColor="#94a3b8"
+            value={qrCode}
+            onChangeText={setQrCode}
+            autoCapitalize="characters"
+            editable={!isScanning}
           />
-          <TouchableOpacity style={styles.confirmButton}>
-            <Text style={styles.confirmButtonText}>Confirmar Código</Text>
+          <TouchableOpacity 
+            style={[styles.confirmButton, (!qrCode || isScanning) && styles.confirmButtonDisabled]}
+            onPress={() => handleScanHousehold()}
+            disabled={!qrCode || isScanning}
+          >
+            <Text style={styles.confirmButtonText}>
+              {isScanning ? 'Verificando...' : 'Confirmar Código'}
+            </Text>
           </TouchableOpacity>
         </View>
+
+        {error && (
+          <View style={styles.errorContainer}>
+            <MaterialIcons name="error-outline" size={20} color="#dc2626" />
+            <Text style={styles.errorText}>{error}</Text>
+          </View>
+        )}
       </TouchableOpacity>
 
       <MobileNav navigation={navigation} currentRoute="Home" />

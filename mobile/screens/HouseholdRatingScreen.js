@@ -1,13 +1,80 @@
-import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, ScrollView, Image } from 'react-native';
+import React, { useState } from 'react';
+import { View, Text, TouchableOpacity, StyleSheet, ScrollView, TextInput, Alert } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import MobileNav from '../components/MobileNav';
+import apiService from '../services/apiService';
 
-export default function HouseholdRatingScreen({ navigation }) {
-  const handleRating = (rating) => {
-    // Aquí se guardaría la calificación
-    navigation.navigate('CollectorSession');
+export default function HouseholdRatingScreen({ navigation, route }) {
+  const { collector, vehicle, session, household } = route.params || {};
+  const [selectedRating, setSelectedRating] = useState(null);
+  const [notes, setNotes] = useState('');
+  const [saving, setSaving] = useState(false);
+
+  const handleRating = async (ratingType) => {
+    if (!session || !household || !collector) {
+      Alert.alert('Error', 'Faltan datos de la sesión, hogar o recolector');
+      return;
+    }
+
+    const ratingMap = {
+      excellent: 'good',
+      good: 'good',
+      regular: 'regular',
+      bad: 'bad',
+      veryBad: 'bad',
+    };
+
+    try {
+      setSaving(true);
+      setSelectedRating(ratingType);
+
+      await apiService.createRating({
+        householdId: household.id,
+        collectorId: collector.id,
+        sessionId: session.id,
+        rating: ratingMap[ratingType],
+        notes: notes || `Calificación: ${ratingType}`,
+      });
+
+      Alert.alert(
+        'Calificación Registrada',
+        'La evaluación se guardó exitosamente',
+        [
+          {
+            text: 'Siguiente Hogar',
+            onPress: () => navigation.navigate('HomeScanner', { collector, vehicle, session }),
+          },
+          {
+            text: 'Ver Sesión',
+            onPress: () => navigation.navigate('CollectorSession', { collector, vehicle, session }),
+          },
+        ]
+      );
+    } catch (err) {
+      Alert.alert(
+        'Error al Guardar',
+        err.message || 'No se pudo registrar la calificación',
+        [{ text: 'OK' }]
+      );
+    } finally {
+      setSaving(false);
+    }
   };
+
+  if (!household) {
+    return (
+      <View style={[styles.container, styles.centerContent]}>
+        <MaterialIcons name="error-outline" size={48} color="#dc2626" />
+        <Text style={styles.errorText}>No se encontró información del hogar</Text>
+        <TouchableOpacity 
+          style={styles.backButton}
+          onPress={() => navigation.goBack()}
+        >
+          <Text style={styles.backButtonText}>Volver</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container}>
@@ -30,68 +97,116 @@ export default function HouseholdRatingScreen({ navigation }) {
               <View style={styles.identifiedBadge}>
                 <Text style={styles.identifiedText}>HOGAR IDENTIFICADO</Text>
               </View>
-              <Text style={styles.houseAddress}>Calle Los Álamos 452</Text>
+              <Text style={styles.houseAddress}>{household.address}</Text>
             </View>
-            <Text style={styles.houseId}>ID-8829-X</Text>
+            <Text style={styles.houseId}>{household.id}</Text>
           </View>
 
-          <View style={styles.houseImageContainer}>
-            <View style={styles.houseImagePlaceholder}>
-              <MaterialIcons name="home" size={60} color="#cbd5e1" />
+          <View style={styles.houseInfo}>
+            <View style={styles.infoItem}>
+              <MaterialIcons name="location-on" size={16} color="#64748b" />
+              <Text style={styles.infoText}>Zona: {household.zone}</Text>
+            </View>
+            <View style={styles.infoItem}>
+              <MaterialIcons name="qr-code" size={16} color="#64748b" />
+              <Text style={styles.infoText}>QR: {household.qrCode}</Text>
             </View>
           </View>
         </View>
 
         <View style={styles.ratingsSection}>
-          <Text style={styles.ratingsTitle}>CALIFICAR RECOLECCIÓN</Text>
+          <Text style={styles.ratingsTitle}>CALIFICAR SEPARACIÓN DE RESIDUOS</Text>
+
+          <TouchableOpacity
+            style={[styles.ratingCard, styles.ratingExcellent]}
+            onPress={() => handleRating('excellent')}
+            disabled={saving}
+          >
+            <View style={styles.ratingIcon}>
+              <MaterialIcons name="star" size={36} color="#10b981" />
+            </View>
+            <View style={styles.ratingText}>
+              <Text style={styles.ratingTitle}>Excelente (5)</Text>
+              <Text style={styles.ratingDescription}>Separación perfecta</Text>
+            </View>
+          </TouchableOpacity>
 
           <TouchableOpacity
             style={[styles.ratingCard, styles.ratingGood]}
             onPress={() => handleRating('good')}
+            disabled={saving}
           >
             <View style={styles.ratingIcon}>
               <MaterialIcons name="thumb-up" size={36} color="#059669" />
             </View>
             <View style={styles.ratingText}>
-              <Text style={styles.ratingTitle}>Buena</Text>
-              <Text style={styles.ratingDescription}>Correctamente separados.</Text>
+              <Text style={styles.ratingTitle}>Buena (4)</Text>
+              <Text style={styles.ratingDescription}>Bien separados</Text>
             </View>
           </TouchableOpacity>
 
           <TouchableOpacity
             style={[styles.ratingCard, styles.ratingRegular]}
             onPress={() => handleRating('regular')}
+            disabled={saving}
           >
             <View style={styles.ratingIcon}>
               <MaterialIcons name="remove-circle-outline" size={36} color="#d97706" />
             </View>
             <View style={styles.ratingText}>
-              <Text style={styles.ratingTitle}>Regular</Text>
-              <Text style={styles.ratingDescription}>Separación parcial.</Text>
+              <Text style={styles.ratingTitle}>Regular (3)</Text>
+              <Text style={styles.ratingDescription}>Separación parcial</Text>
             </View>
           </TouchableOpacity>
 
           <TouchableOpacity
             style={[styles.ratingCard, styles.ratingBad]}
             onPress={() => handleRating('bad')}
+            disabled={saving}
           >
             <View style={styles.ratingIcon}>
               <MaterialIcons name="thumb-down" size={36} color="#dc2626" />
             </View>
             <View style={styles.ratingText}>
-              <Text style={styles.ratingTitle}>Mala</Text>
-              <Text style={styles.ratingDescription}>Totalmente mezclados.</Text>
+              <Text style={styles.ratingTitle}>Mala (2)</Text>
+              <Text style={styles.ratingDescription}>Mal separados</Text>
             </View>
           </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.ratingCard, styles.ratingVeryBad]}
+            onPress={() => handleRating('veryBad')}
+            disabled={saving}
+          >
+            <View style={styles.ratingIcon}>
+              <MaterialIcons name="block" size={36} color="#991b1b" />
+            </View>
+            <View style={styles.ratingText}>
+              <Text style={styles.ratingTitle}>Muy Mala (1)</Text>
+              <Text style={styles.ratingDescription}>Sin separación</Text>
+            </View>
+          </TouchableOpacity>
+
+          <View style={styles.notesSection}>
+            <Text style={styles.notesLabel}>Notas adicionales (opcional)</Text>
+            <TextInput
+              style={styles.notesInput}
+              placeholder="Agregar comentarios..."
+              placeholderTextColor="#94a3b8"
+              value={notes}
+              onChangeText={setNotes}
+              multiline
+              numberOfLines={3}
+              editable={!saving}
+            />
+          </View>
         </View>
 
-        <TouchableOpacity
-          style={styles.nextButton}
-          onPress={() => navigation.navigate('CollectorSession')}
-        >
-          <Text style={styles.nextButtonText}>SIGUIENTE HOGAR</Text>
-          <MaterialIcons name="arrow-forward" size={24} color="#fff" />
-        </TouchableOpacity>
+        {saving && (
+          <View style={styles.savingContainer}>
+            <Text style={styles.savingText}>Guardando calificación...</Text>
+          </View>
+        )}
       </ScrollView>
 
       <MobileNav navigation={navigation} currentRoute="Home" />
@@ -103,6 +218,30 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#f5f8f7',
+  },
+  centerContent: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 32,
+  },
+  errorText: {
+    marginTop: 16,
+    fontSize: 16,
+    color: '#dc2626',
+    textAlign: 'center',
+  },
+  backButton: {
+    marginTop: 24,
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    backgroundColor: '#008a45',
+    borderRadius: 8,
+  },
+  backButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: 'bold',
   },
   header: {
     paddingTop: 50,
@@ -220,14 +359,20 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 3,
   },
+  ratingExcellent: {
+    borderColor: '#10b981',
+  },
   ratingGood: {
-    // borderColor will be applied on press
+    borderColor: '#059669',
   },
   ratingRegular: {
-    // borderColor will be applied on press
+    borderColor: '#d97706',
   },
   ratingBad: {
-    // borderColor will be applied on press
+    borderColor: '#dc2626',
+  },
+  ratingVeryBad: {
+    borderColor: '#991b1b',
   },
   ratingIcon: {
     width: 56,
@@ -247,6 +392,34 @@ const styles = StyleSheet.create({
   ratingDescription: {
     fontSize: 10,
     color: '#64748b',
+  },
+  notesSection: {
+    marginTop: 8,
+  },
+  notesLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#64748b',
+    marginBottom: 8,
+  },
+  notesInput: {
+    backgroundColor: '#fff',
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    borderRadius: 8,
+    padding: 12,
+    fontSize: 14,
+    textAlignVertical: 'top',
+    minHeight: 80,
+  },
+  savingContainer: {
+    alignItems: 'center',
+    padding: 16,
+  },
+  savingText: {
+    fontSize: 16,
+    color: '#008a45',
+    fontWeight: 'bold',
   },
   nextButton: {
     backgroundColor: '#008a45',
