@@ -11,6 +11,13 @@ export default function AdminFleet() {
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showForm, setShowForm] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
+
+  const filteredVehicles = vehicles.filter(v => 
+    v.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    v.type.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    v.status.toLowerCase().includes(searchTerm.toLowerCase())
+  );
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -141,14 +148,35 @@ export default function AdminFleet() {
           </section>
         )}
 
+        <div className="bg-white rounded-xl border border-primary/10 p-4 shadow-sm mb-6">
+          <div className="flex items-center gap-3">
+            <div className="flex-1 flex items-center gap-2 bg-slate-50 rounded-lg px-3 py-2 border border-slate-200">
+              <span className="material-symbols-outlined text-slate-400 text-lg">search</span>
+              <input 
+                type="text"
+                placeholder="Buscar vehículo, tipo o estado..."
+                className="flex-1 border-none outline-none text-sm bg-transparent"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+              />
+              {searchTerm && (
+                <button onClick={() => setSearchTerm('')} className="text-slate-400 hover:text-slate-600">
+                  <span className="material-symbols-outlined text-lg">close</span>
+                </button>
+              )}
+            </div>
+            <span className="text-xs text-slate-500">{filteredVehicles.length} resultados</span>
+          </div>
+        </div>
+
         <div className="grid grid-cols-1 gap-6">
-          {vehicles.length === 0 ? (
+          {filteredVehicles.length === 0 ? (
             <div className="bg-white rounded-xl border border-primary/10 p-12 text-center">
               <span className="material-symbols-outlined text-6xl text-slate-300 mb-4">local_shipping</span>
-              <p className="text-slate-400">No hay vehículos registrados. Crea uno arriba.</p>
+              <p className="text-slate-400">{vehicles.length === 0 ? 'No hay vehículos registrados. Crea uno arriba.' : 'No se encontraron resultados.'}</p>
             </div>
           ) : (
-            vehicles.map((unit) => (
+            filteredVehicles.map((unit) => (
               <div 
                 key={unit.id}
                 className="p-4 bg-white rounded-xl border border-primary/10 flex justify-between items-center hover:shadow-md transition-shadow"

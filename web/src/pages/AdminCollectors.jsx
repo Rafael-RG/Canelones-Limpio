@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import AdminLayout from '../components/AdminLayout';
 import { useCollectors } from '../hooks/useApi';
+import QRExportDialog from '../components/QRExportDialog';
 
 export default function AdminCollectors() {
   const { collectors, loading, error, createCollector, deleteCollector, updateCollector } = useCollectors();
@@ -12,6 +13,15 @@ export default function AdminCollectors() {
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [successMessage, setSuccessMessage] = useState('');
+  const [qrExport, setQrExport] = useState({ isOpen: false, code: '', name: '' });
+  const [searchTerm, setSearchTerm] = useState('');
+  const [showForm, setShowForm] = useState(false);
+
+  const filteredCollectors = collectors.filter(c => 
+    c.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    c.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    c.document.toLowerCase().includes(searchTerm.toLowerCase())
+  );
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -22,6 +32,7 @@ export default function AdminCollectors() {
       await createCollector(formData);
       setFormData({ id: '', name: '', document: '', shift: 'Mañana' });
       setSuccessMessage('Recolector creado exitosamente');
+      setShowForm(false);
       setTimeout(() => setSuccessMessage(''), 3000);
     } catch (err) {
       alert(`Error al crear recolector: ${err.message}`);
@@ -66,8 +77,18 @@ export default function AdminCollectors() {
     <AdminLayout>
       <div className="space-y-8">
         <div className="flex flex-col gap-2">
-          <h2 className="text-3xl font-black">Administración de Recolectores</h2>
-          <p className="text-slate-500">Gestione el personal operativo y genere credenciales QR.</p>
+          <div className="flex justify-between items-center">
+            <div>
+              <h2 className="text-3xl font-black">Administración de Recolectores</h2>
+              <p className="text-slate-500">Gestione el personal operativo y genere credenciales QR.</p>
+            </div>
+            <button
+              onClick={() => setShowForm(!showForm)}
+              className="bg-primary text-white px-4 py-2 rounded-lg font-bold hover:bg-primary/90 transition-colors"
+            >
+              {showForm ? 'Cancelar' : '+ Nuevo Recolector'}
+            </button>
+          </div>
         </div>
 
         {error && (
@@ -82,7 +103,8 @@ export default function AdminCollectors() {
           </div>
         )}
 
-        <section className="bg-white border border-primary/10 rounded-xl p-6 shadow-sm">
+        {showForm && (
+          <section className="bg-white border border-primary/10 rounded-xl p-6 shadow-sm">
           <h3 className="text-lg font-bold mb-6 flex items-center gap-2">
             <span className="material-symbols-outlined text-primary">person_add</span>
             Registrar Nuevo
@@ -139,8 +161,29 @@ export default function AdminCollectors() {
             </button>
           </form>
         </section>
+        )}
 
         <section className="overflow-hidden rounded-xl border border-primary/10 bg-white shadow-sm">
+          <div className="p-4 border-b border-primary/10 bg-slate-50">
+            <div className="flex items-center gap-3 max-w-md">
+              <div className="flex-1 flex items-center gap-2 bg-white rounded-lg px-3 py-2 border border-slate-200">
+                <span className="material-symbols-outlined text-slate-400 text-lg">search</span>
+                <input 
+                  type="text"
+                  placeholder="Buscar recolector, ID o documento..."
+                  className="flex-1 border-none outline-none text-sm bg-transparent"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                />
+                {searchTerm && (
+                  <button onClick={() => setSearchTerm('')} className="text-slate-400 hover:text-slate-600">
+                    <span className="material-symbols-outlined text-lg">close</span>
+                  </button>
+                )}
+              </div>
+              <span className="text-xs text-slate-500">{filteredCollectors.length} resultados</span>
+            </div>
+          </div>
           <table className="w-full text-left">
             <thead className="bg-primary/5 text-primary text-xs font-bold uppercase tracking-wider">
               <tr>
@@ -152,14 +195,14 @@ export default function AdminCollectors() {
               </tr>
             </thead>
             <tbody className="divide-y divide-primary/5">
-              {collectors.length === 0 ? (
+              {filteredCollectors.length === 0 ? (
                 <tr>
                   <td colSpan="5" className="px-6 py-8 text-center text-slate-400">
-                    No hay recolectores registrados. Crea uno arriba.
+                    {collectors.length === 0 ? 'No hay recolectores registrados. Crea uno arriba.' : 'No se encontraron resultados.'}
                   </td>
                 </tr>
               ) : (
-                collectors.map((c) => (
+                filteredCollectors.map((c) => (
                   <tr key={c.id} className="hover:bg-primary/5 transition-colors">
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-3">
@@ -182,6 +225,13 @@ export default function AdminCollectors() {
                     </td>
                     <td className="px-6 py-4 text-right space-x-2">
                       <button 
+                        onClick={() => setQrExport({ isOpen: true, code: c.id, name: c.name })}
+                        className="px-3 py-1.5 bg-green-100 text-green-700 rounded-lg text-xs font-bold hover:bg-green-200 transition-colors"
+                        title="Exportar QR"
+                      >
+                        <span className="material-symbols-outlined text-sm align-middle">qr_code</span>
+                      </button>
+                      <button 
                         onClick={() => handleStatusToggle(c)}
                         className="px-3 py-1.5 bg-blue-100 text-blue-700 rounded-lg text-xs font-bold hover:bg-blue-200 transition-colors"
                         title="Cambiar estado"
@@ -203,6 +253,14 @@ export default function AdminCollectors() {
           </table>
         </section>
       </div>
+
+      <QRExportDialog 
+        isOpen={qrExport.isOpen}
+        onClose={() => setQrExport({ isOpen: false, code: '', name: '' })}
+        code={qrExport.code}
+        name={qrExport.name}
+        type="Recolector"
+      />
     </AdminLayout>
   );
 }

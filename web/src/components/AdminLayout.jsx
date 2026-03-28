@@ -4,34 +4,15 @@ export default function AdminLayout({ children }) {
   return (
     <div className="relative flex h-screen w-full flex-col overflow-hidden">
       <header className="flex items-center justify-between whitespace-nowrap border-b border-solid border-primary/10 bg-white px-10 py-3">
-        <div className="flex items-center gap-8">
-          <div className="flex items-center gap-4 text-primary cursor-pointer">
-            <div className="size-6">
-              <svg fill="currentColor" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
-                <path d="M4 42.4379C4 42.4379 14.0962 36.0744 24 41.1692C35.0664 46.8624 44 42.2078 44 42.2078L44 7.01134C44 7.01134 35.068 11.6577 24.0031 5.96913C14.0971 0.876274 4 7.27094 4 7.27094L4 42.4379Z"></path>
-              </svg>
-            </div>
-            <h2 className="text-slate-900 text-lg font-bold leading-tight tracking-[-0.015em]">Canelones Limpio</h2>
+        <div className="flex items-center gap-4 text-primary cursor-pointer">
+          <div className="size-6">
+            <svg fill="currentColor" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
+              <path d="M4 42.4379C4 42.4379 14.0962 36.0744 24 41.1692C35.0664 46.8624 44 42.2078 44 42.2078L44 7.01134C44 7.01134 35.068 11.6577 24.0031 5.96913C14.0971 0.876274 4 7.27094 4 7.27094L4 42.4379Z"></path>
+            </svg>
           </div>
-          <nav className="hidden md:flex items-center gap-9">
-            <a href="/admin" className="text-sm font-medium hover:text-primary transition-colors text-slate-600">Inicio</a>
-            <a href="/admin/collectors" className="text-sm font-medium hover:text-primary transition-colors text-slate-600">Recolectores</a>
-            <a href="/admin/housing" className="text-sm font-medium hover:text-primary transition-colors text-slate-600">Viviendas</a>
-            <a href="/admin/fleet" className="text-sm font-medium hover:text-primary transition-colors text-slate-600">Flota</a>
-          </nav>
+          <h2 className="text-slate-900 text-lg font-bold leading-tight tracking-[-0.015em]">Canelones Limpio</h2>
         </div>
         <div className="flex flex-1 justify-end gap-4 items-center">
-          <label className="hidden lg:flex flex-col min-w-40 h-10 max-w-64">
-            <div className="flex w-full flex-1 items-stretch rounded-lg h-full overflow-hidden bg-primary/10">
-              <div className="text-primary flex items-center justify-center pl-4">
-                <span className="material-symbols-outlined text-xl">search</span>
-              </div>
-              <input 
-                className="form-input flex w-full border-none bg-transparent focus:ring-0 h-full placeholder:text-primary/60 px-4 pl-2 text-sm" 
-                placeholder="Buscar..." 
-              />
-            </div>
-          </label>
           <button className="bg-primary/10 text-primary p-2 rounded-lg hover:bg-primary/20">
             <span className="material-symbols-outlined">notifications</span>
           </button>
@@ -69,16 +50,6 @@ export default function AdminLayout({ children }) {
               <span className="text-sm font-medium">Control de Flota</span>
             </a>
           </nav>
-
-          <div className="mt-auto pt-6 border-t border-primary/10">
-            <div className="bg-primary/5 rounded-xl p-4">
-              <p className="text-xs font-bold text-primary uppercase mb-2">Estado del Servicio</p>
-              <div className="flex items-center gap-2">
-                <div className="size-2 rounded-full bg-green-500"></div>
-                <p className="text-xs">Sistema Operativo</p>
-              </div>
-            </div>
-          </div>
         </aside>
 
         <main className="flex-1 overflow-y-auto bg-background-light p-6 lg:p-10">

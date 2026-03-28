@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import AdminLayout from '../components/AdminLayout';
 import { useHouseholds } from '../hooks/useApi';
+import QRExportDialog from '../components/QRExportDialog';
 
 export default function AdminHousing() {
   const { households, loading, error, createHousehold, deleteHousehold } = useHouseholds();
@@ -11,6 +12,15 @@ export default function AdminHousing() {
     qrCode: '',
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [qrExport, setQrExport] = useState({ isOpen: false, code: '', name: '' });
+  const [searchTerm, setSearchTerm] = useState('');
+  const [showForm, setShowForm] = useState(false);
+
+  const filteredHouseholds = households.filter(h => 
+    h.address.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    h.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    h.zone.toLowerCase().includes(searchTerm.toLowerCase())
+  );
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -21,6 +31,7 @@ export default function AdminHousing() {
       const qrCode = formData.qrCode || `QR-${Date.now()}`;
       await createHousehold({ ...formData, qrCode });
       setFormData({ id: '', address: '', zone: '', qrCode: '' });
+      setShowForm(false);
     } catch (err) {
       alert(`Error al crear vivienda: ${err.message}`);
     } finally {
@@ -55,8 +66,18 @@ export default function AdminHousing() {
     <AdminLayout>
       <div className="space-y-8">
         <div className="flex flex-col gap-2">
-          <h2 className="text-3xl font-black">Registro de Viviendas</h2>
-          <p className="text-slate-500">Administre el padrón de domicilios y genere identificadores QR.</p>
+          <div className="flex justify-between items-center">
+            <div>
+              <h2 className="text-3xl font-black">Registro de Viviendas</h2>
+              <p className="text-slate-500">Administre el padrón de domicilios y genere identificadores QR.</p>
+            </div>
+            <button
+              onClick={() => setShowForm(!showForm)}
+              className="bg-primary text-white px-4 py-2 rounded-lg font-bold hover:bg-primary/90 transition-colors"
+            >
+              {showForm ? 'Cancelar' : '+ Nueva Vivienda'}
+            </button>
+          </div>
         </div>
 
         {error && (
@@ -65,14 +86,13 @@ export default function AdminHousing() {
           </div>
         )}
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          <section className="lg:col-span-1">
-            <div className="rounded-xl border border-primary/10 bg-white p-6 shadow-sm">
-              <h3 className="mb-4 text-xl font-bold flex items-center gap-2">
-                <span className="material-symbols-outlined text-primary">add_home</span>
-                Nueva Vivienda
-              </h3>
-              <form onSubmit={handleSubmit} className="space-y-4">
+        {showForm && (
+          <section className="bg-white border border-primary/10 rounded-xl p-6 shadow-sm max-w-2xl">
+            <h3 className="mb-4 text-xl font-bold flex items-center gap-2">
+              <span className="material-symbols-outlined text-primary">add_home</span>
+              Nueva Vivienda
+            </h3>
+            <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="text-sm font-semibold block mb-1">ID</label>
                   <input 
@@ -115,17 +135,37 @@ export default function AdminHousing() {
                 <button 
                   type="submit"
                   disabled={isSubmitting}
-                  className="w-full bg-primary text-white font-bold py-3 rounded-lg hover:bg-primary/90 transition-colors disabled:opacity-50"
+                  className="md:col-span-2 bg-primary text-white font-bold py-3 px-8 rounded-lg justify-self-end hover:bg-primary/90 transition-colors disabled:opacity-50"
                 >
                   {isSubmitting ? 'Guardando...' : 'Generar QR y Guardar'}
                 </button>
               </form>
-            </div>
           </section>
+        )}
 
-          <section className="lg:col-span-2 overflow-hidden rounded-xl border border-primary/10 bg-white shadow-sm">
-            <div className="p-4 border-b border-primary/10 bg-slate-50 flex justify-between items-center">
-              <h3 className="font-bold">Viviendas Registradas ({households.length})</h3>
+        <section className="overflow-hidden rounded-xl border border-primary/10 bg-white shadow-sm">
+            <div className="p-4 border-b border-primary/10 bg-slate-50">
+              <div className="flex items-center justify-between gap-4 mb-3">
+                <h3 className="font-bold">Viviendas Registradas ({households.length})</h3>
+              </div>
+              <div className="flex items-center gap-3">
+                <div className="flex-1 flex items-center gap-2 bg-white rounded-lg px-3 py-2 border border-slate-200">
+                  <span className="material-symbols-outlined text-slate-400 text-lg">search</span>
+                  <input 
+                    type="text"
+                    placeholder="Buscar dirección, ID o zona..."
+                    className="flex-1 border-none outline-none text-sm bg-transparent"
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                  />
+                  {searchTerm && (
+                    <button onClick={() => setSearchTerm('')} className="text-slate-400 hover:text-slate-600">
+                      <span className="material-symbols-outlined text-lg">close</span>
+                    </button>
+                  )}
+                </div>
+                <span className="text-xs text-slate-500">{filteredHouseholds.length} resultados</span>
+              </div>
             </div>
             <div className="overflow-x-auto">
               <table className="w-full text-left text-sm">
@@ -139,14 +179,14 @@ export default function AdminHousing() {
                   </tr>
                 </thead>
                 <tbody className="divide-y">
-                  {households.length === 0 ? (
+                  {filteredHouseholds.length === 0 ? (
                     <tr>
                       <td colSpan="5" className="px-6 py-8 text-center text-slate-400">
-                        No hay viviendas registradas. Crea una en el formulario.
+                        {households.length === 0 ? 'No hay viviendas registradas. Crea una en el formulario.' : 'No se encontraron resultados.'}
                       </td>
                     </tr>
                   ) : (
-                    households.map((h) => (
+                    filteredHouseholds.map((h) => (
                       <tr key={h.id} className="hover:bg-slate-50">
                         <td className="px-6 py-4">
                           <div className="font-semibold">{h.address}</div>
@@ -170,11 +210,11 @@ export default function AdminHousing() {
                         </td>
                         <td className="px-6 py-4 text-right">
                           <button 
-                            onClick={() => alert(`Imprimir QR: ${h.qrCode}`)}
+                            onClick={() => setQrExport({ isOpen: true, code: h.id, name: h.address })}
                             className="text-slate-400 mx-1 hover:text-primary transition-colors"
-                            title="Imprimir QR"
+                            title="Exportar QR"
                           >
-                            <span className="material-symbols-outlined text-base">print</span>
+                            <span className="material-symbols-outlined text-base">qr_code</span>
                           </button>
                           <button 
                             onClick={() => handleDelete(h.id)}
@@ -190,9 +230,16 @@ export default function AdminHousing() {
                 </tbody>
               </table>
             </div>
-          </section>
-        </div>
+        </section>
       </div>
+
+      <QRExportDialog 
+        isOpen={qrExport.isOpen}
+        onClose={() => setQrExport({ isOpen: false, code: '', name: '' })}
+        code={qrExport.code}
+        name={qrExport.name}
+        type="Hogar"
+      />
     </AdminLayout>
   );
 }
