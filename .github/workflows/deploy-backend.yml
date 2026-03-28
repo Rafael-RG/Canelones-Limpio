@@ -40,7 +40,7 @@ jobs:
       continue-on-error: true
 
     - name: 📤 Publish
-      run: dotnet publish Backend.csproj --configuration Release --output ./publish --self-contained true --runtime linux-x64 /p:PublishReadyToRun=true
+      run: dotnet publish Backend.csproj --configuration Release --output ./publish --no-self-contained --runtime linux-x64
       working-directory: ${{ env.WORKING_DIRECTORY }}
 
     - name: 🚀 Deploy to Azure App Service
