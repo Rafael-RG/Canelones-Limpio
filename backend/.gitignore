@@ -1,0 +1,75 @@
+## VS Code Folders and Files
+.vscode/
+.vs/
+
+## Build Results
+bin/
+obj/
+[Dd]ebug/
+[Rr]elease/
+x64/
+x86/
+[Ww][Ii][Nn]32/
+[Aa][Rr][Mm]/
+[Aa][Rr][Mm]64/
+bld/
+[Bb]in/
+[Oo]bj/
+[Ll]og/
+[Ll]ogs/
+
+## User-specific files
+*.rsuser
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+
+## Visual Studio cache/options
+.vs/
+
+## .NET / ASP.NET Core
+project.lock.json
+project.fragment.lock.json
+artifacts/
+
+## NuGet Packages
+*.nupkg
+*.snupkg
+**/[Pp]ackages/*
+!**/[Pp]ackages/build/
+*.nuget.props
+*.nuget.targets
+
+## Test Results
+[Tt]est[Rr]esult*/
+[Bb]uild[Ll]og.*
+
+## Database
+*.db
+*.db-shm
+*.db-wal
+
+## Rider
+.idea/
+*.sln.iml
+
+## JetBrains Rider
+.idea/
+
+## macOS
+.DS_Store
+
+## Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+## Logs
+*.log
+
+## Sensitive Configuration Files (aunque ya está commiteado appsettings.json con el connection string)
+appsettings.Production.json
+appsettings.Staging.json
+*.pfx
+*.Development.json

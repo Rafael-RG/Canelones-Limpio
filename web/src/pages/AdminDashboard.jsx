@@ -1,7 +1,35 @@
 import React from 'react';
 import AdminLayout from '../components/AdminLayout';
+import { useDashboardStats } from '../hooks/useApi';
 
 export default function AdminDashboard() {
+  const { stats, loading, error } = useDashboardStats();
+
+  if (loading) {
+    return (
+      <AdminLayout>
+        <div className="flex items-center justify-center h-96">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+            <p className="text-slate-600">Cargando estadísticas...</p>
+          </div>
+        </div>
+      </AdminLayout>
+    );
+  }
+
+  if (error) {
+    return (
+      <AdminLayout>
+        <div className="bg-red-50 border border-red-200 rounded-xl p-6">
+          <h3 className="text-red-800 font-bold mb-2">Error al cargar datos</h3>
+          <p className="text-red-600">{error}</p>
+          <p className="text-sm text-red-500 mt-2">Asegúrate de que el backend esté en ejecución en https://localhost:7001</p>
+        </div>
+      </AdminLayout>
+    );
+  }
+
   return (
     <AdminLayout>
       <div className="space-y-8">
@@ -20,8 +48,10 @@ export default function AdminDashboard() {
               <span className="material-symbols-outlined text-primary">recycling</span>
               <h4 className="text-xs font-bold uppercase text-slate-500">Recolección Total</h4>
             </div>
-            <p className="text-3xl font-black">1,248</p>
-            <p className="text-xs text-green-600 font-medium">+15% hoy</p>
+            <p className="text-3xl font-black">{stats?.totalCollectionsToday || 0}</p>
+            <p className="text-xs text-green-600 font-medium">
+              {stats?.percentageChangeToday > 0 ? '+' : ''}{stats?.percentageChangeToday || 0}% hoy
+            </p>
           </div>
 
           <div className="bg-white p-6 rounded-xl border border-primary/10 shadow-sm">
@@ -29,8 +59,10 @@ export default function AdminDashboard() {
               <span className="material-symbols-outlined text-primary">eco</span>
               <h4 className="text-xs font-bold uppercase text-slate-500">Unidades Eco</h4>
             </div>
-            <p className="text-3xl font-black">12</p>
-            <p className="text-xs text-slate-400 font-medium">85% operativos</p>
+            <p className="text-3xl font-black">{stats?.totalVehicles || 0}</p>
+            <p className="text-xs text-slate-400 font-medium">
+              {stats?.operationalPercentage || 0}% operativos
+            </p>
           </div>
 
           <div className="bg-white p-6 rounded-xl border border-primary/10 shadow-sm">
@@ -38,7 +70,7 @@ export default function AdminDashboard() {
               <span className="material-symbols-outlined text-primary">analytics</span>
               <h4 className="text-xs font-bold uppercase text-slate-500">Eficiencia</h4>
             </div>
-            <p className="text-3xl font-black">94%</p>
+            <p className="text-3xl font-black">{stats?.averageEfficiency || 0}%</p>
             <p className="text-xs text-slate-400 font-medium">Promedio semanal</p>
           </div>
 
@@ -47,7 +79,7 @@ export default function AdminDashboard() {
               <span className="material-symbols-outlined text-primary">warning</span>
               <h4 className="text-xs font-bold uppercase text-slate-500">Alertas</h4>
             </div>
-            <p className="text-3xl font-black">4</p>
+            <p className="text-3xl font-black">{stats?.totalAlerts || 0}</p>
             <p className="text-xs text-red-500 font-medium">Requieren atención</p>
           </div>
         </div>
