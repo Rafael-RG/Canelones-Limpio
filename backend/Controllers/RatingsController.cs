@@ -69,4 +69,24 @@ public class RatingsController : ControllerBase
             return BadRequest(ex.Message);
         }
     }
+
+    [HttpPut("{householdId}/{ratingId}")]
+    public async Task<ActionResult<RatingDto>> Update(string householdId, string ratingId, [FromBody] UpdateRatingDto dto)
+    {
+        var rating = await _service.UpdateRatingAsync(householdId, ratingId, dto);
+        if (rating == null)
+            return NotFound();
+        
+        return Ok(rating);
+    }
+
+    [HttpDelete("{householdId}/{ratingId}")]
+    public async Task<ActionResult> Delete(string householdId, string ratingId)
+    {
+        var deleted = await _service.DeleteRatingAsync(householdId, ratingId);
+        if (!deleted)
+            return NotFound();
+        
+        return NoContent();
+    }
 }

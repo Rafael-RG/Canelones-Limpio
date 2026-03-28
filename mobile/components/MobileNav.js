@@ -1,9 +1,23 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Alert } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
+import { useSession } from '../contexts/SessionContext';
 
 export default function MobileNav({ navigation, currentRoute }) {
+  const { activeSession } = useSession();
   const isActive = (routeName) => currentRoute === routeName;
+
+  const handleHistoryPress = () => {
+    if (!activeSession) {
+      Alert.alert(
+        'Acceso Restringido',
+        'Debe identificarse como recolector para ver el historial',
+        [{ text: 'OK' }]
+      );
+      return;
+    }
+    navigation.navigate('History');
+  };
 
   return (
     <View style={styles.nav}>
@@ -23,44 +37,21 @@ export default function MobileNav({ navigation, currentRoute }) {
         </TouchableOpacity>
 
         <TouchableOpacity 
-          style={styles.navItem} 
-          onPress={() => navigation.navigate('History')}
+          style={[styles.navItem, !activeSession && styles.navItemDisabled]} 
+          onPress={handleHistoryPress}
+          disabled={!activeSession && currentRoute !== 'History'}
         >
           <MaterialIcons 
             name="history" 
             size={24} 
-            color={isActive('History') ? '#008a45' : '#94a3b8'} 
+            color={isActive('History') ? '#008a45' : (!activeSession ? '#cbd5e1' : '#94a3b8')} 
           />
-          <Text style={[styles.navText, isActive('History') && styles.navTextActive]}>
+          <Text style={[
+            styles.navText, 
+            isActive('History') && styles.navTextActive,
+            !activeSession && styles.navTextDisabled
+          ]}>
             HISTORIAL
-          </Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity 
-          style={styles.navItem} 
-          onPress={() => navigation.navigate('HomeScanner')}
-        >
-          <MaterialIcons 
-            name="qr-code-scanner" 
-            size={24} 
-            color={isActive('HomeScanner') ? '#008a45' : '#94a3b8'} 
-          />
-          <Text style={[styles.navText, isActive('HomeScanner') && styles.navTextActive]}>
-            ESCANEAR
-          </Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity 
-          style={styles.navItem} 
-          onPress={() => navigation.navigate('CollectorSession')}
-        >
-          <MaterialIcons 
-            name="badge" 
-            size={24} 
-            color={isActive('CollectorSession') ? '#008a45' : '#94a3b8'} 
-          />
-          <Text style={[styles.navText, isActive('CollectorSession') && styles.navTextActive]}>
-            SESIÓN
           </Text>
         </TouchableOpacity>
       </View>
@@ -85,13 +76,16 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     maxWidth: 448,
     marginHorizontal: 'auto',
-    justifyContent: 'space-between',
+    justifyContent: 'space-around',
     alignItems: 'flex-end',
   },
   navItem: {
     flex: 1,
     alignItems: 'center',
     gap: 4,
+  },
+  navItemDisabled: {
+    opacity: 0.5,
   },
   navText: {
     fontSize: 10,
@@ -101,5 +95,8 @@ const styles = StyleSheet.create({
   },
   navTextActive: {
     color: '#008a45',
+  },
+  navTextDisabled: {
+    color: '#cbd5e1',
   },
 });

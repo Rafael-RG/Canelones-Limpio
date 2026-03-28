@@ -23,6 +23,12 @@ public class CreateRatingDto
     public string? Notes { get; set; }
 }
 
+public class UpdateRatingDto
+{
+    public string Rating { get; set; } = string.Empty; // good, regular, bad
+    public string? Notes { get; set; }
+}
+
 public class RatingsByHouseholdDto
 {
     public string HouseholdId { get; set; } = string.Empty;

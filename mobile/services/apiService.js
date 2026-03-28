@@ -189,13 +189,17 @@ class ApiService {
     });
   }
 
-  async finishSession(id) {
-    const session = await this.getSession(id);
-    return this.updateSession(id, {
-      ...session,
-      endTime: new Date().toISOString(),
-      status: 'Completada',
+  async endSession(id) {
+    return this.request(`/sessions/${id}/end`, {
+      method: 'POST',
+      body: JSON.stringify({
+        endTime: new Date().toISOString()
+      }),
     });
+  }
+
+  async finishSession(id) {
+    return this.endSession(id);
   }
 
   async deleteSession(id) {
@@ -226,15 +230,15 @@ class ApiService {
     });
   }
 
-  async updateRating(id, data) {
-    return this.request(`/ratings/${id}`, {
+  async updateRating(householdId, ratingId, data) {
+    return this.request(`/ratings/${householdId}/${ratingId}`, {
       method: 'PUT',
       body: JSON.stringify(data),
     });
   }
 
-  async deleteRating(id) {
-    return this.request(`/ratings/${id}`, {
+  async deleteRating(householdId, ratingId) {
+    return this.request(`/ratings/${householdId}/${ratingId}`, {
       method: 'DELETE',
     });
   }

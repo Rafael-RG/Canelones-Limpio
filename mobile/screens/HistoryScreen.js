@@ -1,118 +1,243 @@
 import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, ScrollView } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, ScrollView, RefreshControl } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import MobileNav from '../components/MobileNav';
+import { useSession } from '../contexts/SessionContext';
+import { useSessions } from '../hooks/useApi';
 
 export default function HistoryScreen({ navigation }) {
-  const [selectedMonth, setSelectedMonth] = useState(10);
-  const [selectedDay, setSelectedDay] = useState(12);
+  const { activeSession } = useSession();
+  const { sessions, loading, refresh } = useSessions();
+  const [refreshing, setRefreshing] = useState(false);
 
-  const mockHistory = [
-    { id: 1, date: '12/10/2023', time: '08:30 AM', address: 'Av. 18 de Julio 1450', collector: 'Carlos Pérez', status: 'Bueno', statusColor: '#16a34a' },
-    { id: 2, date: '12/10/2023', time: '08:45 AM', address: 'Calle Los Álamos 452', collector: 'Juan García', status: 'Regular', statusColor: '#d97706' },
-    { id: 3, date: '12/10/2023', time: '09:00 AM', address: 'Rivera 2345', collector: 'María López', status: 'Bueno', statusColor: '#16a34a' },
-  ];
-
-  const renderCalendar = () => {
-    const days = [];
-    for (let i = 1; i <= 31; i++) {
-      days.push(
-        <TouchableOpacity
-          key={i}
-          style={[styles.calendarDay, i === selectedDay && styles.calendarDaySelected]}
-          onPress={() => setSelectedDay(i)}
-        >
-          <Text style={[styles.calendarDayText, i === selectedDay && styles.calendarDayTextSelected]}>
-            {i}
-          </Text>
-        </TouchableOpacity>
-      );
+  // Filtrar sesiones del usuario actual
+  const userSessions = sessions?.filter(session => {
+    if (activeSession) {
+      return session.collectorId === activeSession.collector.id;
     }
-    return days;
+    return true; // Si no hay sesión activa, mostrar todas
+  }) || [];
+
+  // Ordenar por fecha más reciente
+  const sortedSessions = [...userSessions].sort((a, b) => {
+    return new Date(b.startTime) - new Date(a.startTime);
+  });
+
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await refresh();
+    setRefreshing(false);
   };
+
+  const formatDate = (dateString) => {
+    const date = new Date(dateString);
+    return date.toLocaleDateString('es-UY', { day: '2-digit', month: '2-digit', year: 'numeric' });
+  };
+
+  const formatTime = (dateString) => {
+    const date = new Date(dateString);
+    return date.toLocaleTimeString('es-UY', { hour: '2-digit', minute: '2-digit' });
+  };
+
+  const formatDuration = (startTime, endTime) => {
+    if (!endTime) return 'En progreso';
+    const start = new Date(startTime);
+    const end = new Date(endTime);
+    const diffMs = end - start;
+    const diffMins = Math.floor(diffMs / 60000);
+    const hours = Math.floor(diffMins / 60);
+    const mins = diffMins % 60;
+    return `${hours}h ${mins}m`;
+  };
+
+  const getStatusColor = (status) => {
+    switch (status?.toLowerCase()) {
+      case 'activa': return '#10b981';
+      case 'finalizada': return '#64748b';
+      case 'pausada': return '#f59e0b';
+      default: return '#94a3b8';
+    }
+  };
+
+  const calculateStats = () => {
+    const totalCollections = sortedSessions.reduce((sum, s) => sum + (s.totalCollections || 0), 0);
+    const completedSessions = sortedSessions.filter(s => s.status === 'Finalizada').length;
+    return {
+      totalCollections,
+      completedSessions,
+      totalSessions: sortedSessions.length
+    };
+  };
+
+  const stats = calculateStats();
+
+  // Si no hay sesión activa, mostrar mensaje
+  if (!activeSession) {
+    return (
+      <View style={styles.container}>
+        <View style={styles.header}>
+          <View style={styles.headerLeft}>
+            <MaterialIcons name="history" size={32} color="#008a45" />
+            <View>
+              <Text style={styles.headerTitle}>Mi Historial</Text>
+              <Text style={styles.headerSubtitle}>No disponible</Text>
+            </View>
+          </View>
+        </View>
+        
+        <View style={styles.content}>
+          <View style={styles.emptyContainer}>
+            <MaterialIcons name="lock-outline" size={64} color="#cbd5e1" />
+            <Text style={styles.emptyTitle}>Acceso Restringido</Text>
+            <Text style={styles.emptyText}>
+              Debe identificarse como recolector para acceder a su historial de sesiones
+            </Text>
+            <TouchableOpacity 
+              style={styles.backButton}
+              onPress={() => navigation.navigate('Home')}
+            >
+              <Text style={styles.backButtonText}>Ir a Inicio</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+        
+        <MobileNav navigation={navigation} currentRoute="History" />
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container}>
-      <ScrollView style={styles.scrollView} contentContainerStyle={styles.content}>
+      <ScrollView 
+        style={styles.scrollView} 
+        contentContainerStyle={styles.content}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={['#008a45']} />
+        }
+      >
         <View style={styles.header}>
-          <View>
-            <Text style={styles.headerTitle}>Historial Detallado</Text>
-            <Text style={styles.headerSubtitle}>Registro completo de recolecciones municipales.</Text>
-          </View>
-          <TouchableOpacity style={styles.exportButton}>
-            <MaterialIcons name="download" size={18} color="#fff" />
-            <Text style={styles.exportButtonText}>Exportar</Text>
-          </TouchableOpacity>
-        </View>
-
-        <View style={styles.calendarSummaryRow}>
-          <View style={styles.calendarCard}>
-            <View style={styles.calendarHeader}>
-              <TouchableOpacity>
-                <MaterialIcons name="chevron-left" size={24} color="#008a45" />
-              </TouchableOpacity>
-              <Text style={styles.calendarMonth}>Octubre 2023</Text>
-              <TouchableOpacity>
-                <MaterialIcons name="chevron-right" size={24} color="#008a45" />
-              </TouchableOpacity>
-            </View>
-
-            <View style={styles.calendarWeekdays}>
-              {['DOM', 'LUN', 'MAR', 'MIE', 'JUE', 'VIE', 'SAB'].map((day) => (
-                <Text key={day} style={styles.weekdayText}>{day}</Text>
-              ))}
-            </View>
-
-            <View style={styles.calendarGrid}>
-              {renderCalendar()}
-            </View>
-          </View>
-
-          <View style={styles.summaryCard}>
-            <Text style={styles.summaryTitle}>Resumen del Día</Text>
-            <View style={styles.summaryGrid}>
-              <View style={styles.summaryItem}>
-                <Text style={styles.summaryValue}>1,248</Text>
-                <Text style={styles.summaryLabel}>RECOLECCIONES</Text>
-              </View>
-              <View style={styles.summaryItem}>
-                <Text style={styles.summaryValue}>94%</Text>
-                <Text style={styles.summaryLabel}>EFICIENCIA</Text>
-              </View>
-              <View style={styles.summaryItem}>
-                <Text style={styles.summaryValue}>12</Text>
-                <Text style={styles.summaryLabel}>ALERTAS</Text>
-              </View>
+          <View style={styles.headerLeft}>
+            <MaterialIcons name="history" size={32} color="#008a45" />
+            <View>
+              <Text style={styles.headerTitle}>Mi Historial</Text>
+              <Text style={styles.headerSubtitle}>
+                {activeSession 
+                  ? `Sesiones de ${activeSession.collector.name}`
+                  : 'Todas las sesiones'
+                }
+              </Text>
             </View>
           </View>
         </View>
 
-        <View style={styles.tableCard}>
-          <View style={styles.tableHeader}>
-            <Text style={styles.tableHeaderText}>Fecha / Hora</Text>
-            <Text style={styles.tableHeaderText}>Vivienda</Text>
-            <Text style={styles.tableHeaderText}>Recolector</Text>
-            <Text style={styles.tableHeaderText}>Estado</Text>
+        <View style={styles.statsRow}>
+          <View style={styles.statCard}>
+            <MaterialIcons name="work" size={24} color="#008a45" />
+            <Text style={styles.statValue}>{stats.totalSessions}</Text>
+            <Text style={styles.statLabel}>Sesiones</Text>
           </View>
+          
+          <View style={styles.statCard}>
+            <MaterialIcons name="check-circle" size={24} color="#10b981" />
+            <Text style={styles.statValue}>{stats.completedSessions}</Text>
+            <Text style={styles.statLabel}>Completadas</Text>
+          </View>
+          
+          <View style={styles.statCard}>
+            <MaterialIcons name="home-work" size={24} color="#3b82f6" />
+            <Text style={styles.statValue}>{stats.totalCollections}</Text>
+            <Text style={styles.statLabel}>Recolecciones</Text>
+          </View>
+        </View>
 
-          {mockHistory.map((item) => (
-            <View key={item.id} style={styles.tableRow}>
-              <View style={styles.tableCell}>
-                <Text style={styles.tableCellBold}>{item.date}</Text>
-                <Text style={styles.tableCellSmall}>{item.time}</Text>
-              </View>
-              <Text style={styles.tableCell}>{item.address}</Text>
-              <Text style={styles.tableCell}>{item.collector}</Text>
-              <View style={styles.tableCell}>
-                <View style={[styles.statusBadge, { backgroundColor: `${item.statusColor}1a` }]}>
-                  <Text style={[styles.statusText, { color: item.statusColor }]}>
-                    {item.status}
-                  </Text>
+        {loading ? (
+          <View style={styles.loadingContainer}>
+            <Text style={styles.loadingText}>Cargando historial...</Text>
+          </View>
+        ) : sortedSessions.length === 0 ? (
+          <View style={styles.emptyContainer}>
+            <MaterialIcons name="inbox" size={64} color="#cbd5e1" />
+            <Text style={styles.emptyTitle}>Sin Historial</Text>
+            <Text style={styles.emptyText}>
+              {activeSession 
+                ? 'No hay sesiones registradas para este usuario'
+                : 'No hay sesiones registradas en el sistema'
+              }
+            </Text>
+          </View>
+        ) : (
+          <View style={styles.sessionsContainer}>
+            <Text style={styles.sectionTitle}>Sesiones Recientes</Text>
+            
+            {sortedSessions.map((session) => (
+              <TouchableOpacity 
+                key={session.id} 
+                style={styles.sessionCard}
+                onPress={() => navigation.navigate('SessionDetail', { session })}
+                activeOpacity={0.7}
+              >
+                <View style={styles.sessionHeader}>
+                  <View style={styles.sessionHeaderLeft}>
+                    <MaterialIcons 
+                      name={session.status === 'Activa' ? 'play-circle' : 'check-circle'} 
+                      size={24} 
+                      color={getStatusColor(session.status)} 
+                    />
+                    <View>
+                      <Text style={styles.sessionDate}>
+                        {formatDate(session.startTime)}
+                      </Text>
+                      <Text style={styles.sessionTime}>
+                        {formatTime(session.startTime)} - {session.endTime ? formatTime(session.endTime) : 'En progreso'}
+                      </Text>
+                    </View>
+                  </View>
+                  <View style={[styles.statusBadge, { backgroundColor: getStatusColor(session.status) }]}>
+                    <Text style={styles.statusText}>{session.status}</Text>
+                  </View>
                 </View>
-              </View>
-            </View>
-          ))}
-        </View>
+
+                <View style={styles.sessionDetails}>
+                  <View style={styles.detailRow}>
+                    <MaterialIcons name="person" size={18} color="#64748b" />
+                    <Text style={styles.detailText}>{session.collectorName || session.collectorId}</Text>
+                  </View>
+                  
+                  <View style={styles.detailRow}>
+                    <MaterialIcons name="local-shipping" size={18} color="#64748b" />
+                    <Text style={styles.detailText}>{session.vehicleId}</Text>
+                  </View>
+                  
+                  <View style={styles.detailRow}>
+                    <MaterialIcons name="location-on" size={18} color="#64748b" />
+                    <Text style={styles.detailText}>{session.zone || 'Sin zona'}</Text>
+                  </View>
+                </View>
+
+                <View style={styles.sessionStats}>
+                  <View style={styles.sessionStat}>
+                    <Text style={styles.sessionStatValue}>{session.totalCollections || 0}</Text>
+                    <Text style={styles.sessionStatLabel}>Recolecciones</Text>
+                  </View>
+                  
+                  <View style={styles.sessionDivider} />
+                  
+                  <View style={styles.sessionStat}>
+                    <Text style={styles.sessionStatValue}>
+                      {formatDuration(session.startTime, session.endTime)}
+                    </Text>
+                    <Text style={styles.sessionStatLabel}>Duración</Text>
+                  </View>
+                </View>
+
+                <View style={styles.viewDetailsRow}>
+                  <Text style={styles.viewDetailsText}>Ver detalles</Text>
+                  <MaterialIcons name="chevron-right" size={20} color="#008a45" />
+                </View>
+              </TouchableOpacity>
+            ))}
+          </View>
+        )}
       </ScrollView>
 
       <MobileNav navigation={navigation} currentRoute="History" />
@@ -130,182 +255,202 @@ const styles = StyleSheet.create({
   },
   content: {
     padding: 16,
+    paddingTop: 50,
     paddingBottom: 100,
   },
   header: {
+    marginBottom: 24,
+  },
+  headerLeft: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-end',
-    marginBottom: 32,
-    flexWrap: 'wrap',
-    gap: 16,
+    alignItems: 'center',
+    gap: 12,
   },
   headerTitle: {
-    fontSize: 30,
-    fontWeight: '900',
+    fontSize: 24,
+    fontWeight: '700',
+    color: '#1e293b',
   },
   headerSubtitle: {
     fontSize: 14,
     color: '#64748b',
+    marginTop: 2,
   },
-  exportButton: {
-    backgroundColor: '#008a45',
+  statsRow: {
     flexDirection: 'row',
+    gap: 12,
+    marginBottom: 24,
+  },
+  statCard: {
+    flex: 1,
+    backgroundColor: '#fff',
+    padding: 16,
+    borderRadius: 12,
     alignItems: 'center',
     gap: 8,
-    paddingVertical: 10,
-    paddingHorizontal: 24,
-    borderRadius: 8,
-  },
-  exportButtonText: {
-    color: '#fff',
-    fontWeight: 'bold',
-  },
-  calendarSummaryRow: {
-    gap: 24,
-    marginBottom: 32,
-  },
-  calendarCard: {
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 24,
-    borderWidth: 1,
-    borderColor: 'rgba(0, 138, 69, 0.1)',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.05,
     shadowRadius: 4,
     elevation: 2,
   },
-  calendarHeader: {
+  statValue: {
+    fontSize: 24,
+    fontWeight: '700',
+    color: '#1e293b',
+  },
+  statLabel: {
+    fontSize: 12,
+    color: '#64748b',
+    textAlign: 'center',
+  },
+  loadingContainer: {
+    padding: 40,
+    alignItems: 'center',
+  },
+  loadingText: {
+    fontSize: 16,
+    color: '#64748b',
+  },
+  emptyContainer: {
+    padding: 40,
+    alignItems: 'center',
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    marginTop: 20,
+  },
+  emptyTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#1e293b',
+    marginTop: 16,
+    marginBottom: 8,
+  },
+  emptyText: {
+    fontSize: 14,
+    color: '#64748b',
+    textAlign: 'center',
+    lineHeight: 20,
+  },
+  backButton: {
+    backgroundColor: '#008a45',
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 8,
+    marginTop: 16,
+  },
+  backButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  sessionsContainer: {
+    gap: 12,
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#1e293b',
+    marginBottom: 12,
+  },
+  sessionCard: {
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  sessionHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: 16,
-  },
-  calendarMonth: {
-    fontSize: 16,
-    fontWeight: 'bold',
-  },
-  calendarWeekdays: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    marginBottom: 8,
-  },
-  weekdayText: {
-    fontSize: 10,
-    fontWeight: 'bold',
-    color: '#008a45',
-    width: 40,
-    textAlign: 'center',
-  },
-  calendarGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 4,
-  },
-  calendarDay: {
-    width: 40,
-    height: 32,
-    borderRadius: 8,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  calendarDaySelected: {
-    backgroundColor: '#008a45',
-  },
-  calendarDayText: {
-    fontSize: 12,
-  },
-  calendarDayTextSelected: {
-    color: '#fff',
-    fontWeight: 'bold',
-  },
-  summaryCard: {
-    backgroundColor: '#008a45',
-    borderRadius: 12,
-    padding: 24,
-    shadowColor: '#008a45',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 8,
-    elevation: 4,
-  },
-  summaryTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: 'rgba(255, 255, 255, 0.9)',
-    marginBottom: 8,
-  },
-  summaryGrid: {
-    flexDirection: 'row',
-    gap: 16,
-    marginTop: 8,
-  },
-  summaryItem: {
-    flex: 1,
-  },
-  summaryValue: {
-    fontSize: 30,
-    fontWeight: '900',
-    color: '#fff',
-  },
-  summaryLabel: {
-    fontSize: 10,
-    fontWeight: '500',
-    color: 'rgba(255, 255, 255, 0.8)',
-    letterSpacing: 1,
-  },
-  tableCard: {
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: 'rgba(0, 138, 69, 0.1)',
-    overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  tableHeader: {
-    flexDirection: 'row',
-    backgroundColor: 'rgba(0, 138, 69, 0.05)',
-    padding: 16,
-  },
-  tableHeaderText: {
-    flex: 1,
-    fontSize: 10,
-    fontWeight: 'bold',
-    color: '#008a45',
-    letterSpacing: 1.5,
-  },
-  tableRow: {
-    flexDirection: 'row',
-    padding: 16,
+    paddingBottom: 16,
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(0, 138, 69, 0.05)',
+    borderBottomColor: '#f1f5f9',
   },
-  tableCell: {
+  sessionHeaderLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
     flex: 1,
-    fontSize: 14,
   },
-  tableCellBold: {
-    fontSize: 14,
-    fontWeight: 'bold',
+  sessionDate: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#1e293b',
   },
-  tableCellSmall: {
-    fontSize: 12,
+  sessionTime: {
+    fontSize: 13,
     color: '#64748b',
+    marginTop: 2,
   },
   statusBadge: {
-    paddingHorizontal: 12,
+    paddingHorizontal: 10,
     paddingVertical: 4,
-    borderRadius: 9999,
-    alignSelf: 'flex-start',
+    borderRadius: 6,
   },
   statusText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#fff',
+  },
+  sessionDetails: {
+    gap: 10,
+    marginBottom: 16,
+  },
+  detailRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  detailText: {
+    fontSize: 14,
+    color: '#64748b',
+  },
+  sessionStats: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingTop: 16,
+    borderTopWidth: 1,
+    borderTopColor: '#f1f5f9',
+  },
+  sessionStat: {
+    flex: 1,
+    alignItems: 'center',
+  },
+  sessionStatValue: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#008a45',
+  },
+  sessionStatLabel: {
     fontSize: 12,
-    fontWeight: 'bold',
+    color: '#64748b',
+    marginTop: 4,
+  },
+  viewDetailsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 4,
+    marginTop: 12,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: '#f1f5f9',
+  },
+  viewDetailsText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#008a45',
+  },
+  sessionDivider: {
+    width: 1,
+    height: 40,
+    backgroundColor: '#e2e8f0',
   },
 });

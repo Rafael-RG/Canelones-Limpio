@@ -116,6 +116,39 @@ public class RatingService
         return ratings.OrderByDescending(r => r.CollectionDate).ToList();
     }
 
+    public async Task<RatingDto?> UpdateRatingAsync(string householdId, string ratingId, UpdateRatingDto dto)
+    {
+        try
+        {
+            var existingEntity = await _tableClient.GetEntityAsync<RatingEntity>(householdId, ratingId);
+            var entity = existingEntity.Value;
+            
+            // Actualizar campos
+            entity.Rating = dto.Rating;
+            entity.Notes = dto.Notes;
+            
+            await _tableClient.UpdateEntityAsync(entity, entity.ETag, TableUpdateMode.Replace);
+            return MapToDto(entity);
+        }
+        catch (Azure.RequestFailedException ex) when (ex.Status == 404)
+        {
+            return null;
+        }
+    }
+
+    public async Task<bool> DeleteRatingAsync(string householdId, string ratingId)
+    {
+        try
+        {
+            await _tableClient.DeleteEntityAsync(householdId, ratingId);
+            return true;
+        }
+        catch (Azure.RequestFailedException ex) when (ex.Status == 404)
+        {
+            return false;
+        }
+    }
+
     private static RatingDto MapToDto(RatingEntity entity)
     {
         return new RatingDto

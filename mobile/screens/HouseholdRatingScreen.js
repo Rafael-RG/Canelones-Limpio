@@ -16,14 +16,6 @@ export default function HouseholdRatingScreen({ navigation, route }) {
       return;
     }
 
-    const ratingMap = {
-      excellent: 'good',
-      good: 'good',
-      regular: 'regular',
-      bad: 'bad',
-      veryBad: 'bad',
-    };
-
     try {
       setSaving(true);
       setSelectedRating(ratingType);
@@ -32,24 +24,11 @@ export default function HouseholdRatingScreen({ navigation, route }) {
         householdId: household.id,
         collectorId: collector.id,
         sessionId: session.id,
-        rating: ratingMap[ratingType],
-        notes: notes || `Calificación: ${ratingType}`,
+        rating: ratingType,
+        notes: notes || '',
       });
 
-      Alert.alert(
-        'Calificación Registrada',
-        'La evaluación se guardó exitosamente',
-        [
-          {
-            text: 'Siguiente Hogar',
-            onPress: () => navigation.navigate('HomeScanner', { collector, vehicle, session }),
-          },
-          {
-            text: 'Ver Sesión',
-            onPress: () => navigation.navigate('CollectorSession', { collector, vehicle, session }),
-          },
-        ]
-      );
+      navigation.navigate('Home');
     } catch (err) {
       Alert.alert(
         'Error al Guardar',
@@ -59,6 +38,20 @@ export default function HouseholdRatingScreen({ navigation, route }) {
     } finally {
       setSaving(false);
     }
+  };
+
+  const handleNoCollection = () => {
+    Alert.alert(
+      'Sin Recolección',
+      '¿El hogar no sacó residuos? No se registrará calificación.',
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Confirmar',
+          onPress: () => navigation.navigate('Home'),
+        },
+      ]
+    );
   };
 
   if (!household) {
@@ -118,29 +111,15 @@ export default function HouseholdRatingScreen({ navigation, route }) {
           <Text style={styles.ratingsTitle}>CALIFICAR SEPARACIÓN DE RESIDUOS</Text>
 
           <TouchableOpacity
-            style={[styles.ratingCard, styles.ratingExcellent]}
-            onPress={() => handleRating('excellent')}
-            disabled={saving}
-          >
-            <View style={styles.ratingIcon}>
-              <MaterialIcons name="star" size={36} color="#10b981" />
-            </View>
-            <View style={styles.ratingText}>
-              <Text style={styles.ratingTitle}>Excelente (5)</Text>
-              <Text style={styles.ratingDescription}>Separación perfecta</Text>
-            </View>
-          </TouchableOpacity>
-
-          <TouchableOpacity
             style={[styles.ratingCard, styles.ratingGood]}
             onPress={() => handleRating('good')}
             disabled={saving}
           >
             <View style={styles.ratingIcon}>
-              <MaterialIcons name="thumb-up" size={36} color="#059669" />
+              <MaterialIcons name="thumb-up" size={36} color="#10b981" />
             </View>
             <View style={styles.ratingText}>
-              <Text style={styles.ratingTitle}>Buena (4)</Text>
+              <Text style={styles.ratingTitle}>Buena</Text>
               <Text style={styles.ratingDescription}>Bien separados</Text>
             </View>
           </TouchableOpacity>
@@ -151,10 +130,10 @@ export default function HouseholdRatingScreen({ navigation, route }) {
             disabled={saving}
           >
             <View style={styles.ratingIcon}>
-              <MaterialIcons name="remove-circle-outline" size={36} color="#d97706" />
+              <MaterialIcons name="remove-circle-outline" size={36} color="#f59e0b" />
             </View>
             <View style={styles.ratingText}>
-              <Text style={styles.ratingTitle}>Regular (3)</Text>
+              <Text style={styles.ratingTitle}>Regular</Text>
               <Text style={styles.ratingDescription}>Separación parcial</Text>
             </View>
           </TouchableOpacity>
@@ -168,22 +147,24 @@ export default function HouseholdRatingScreen({ navigation, route }) {
               <MaterialIcons name="thumb-down" size={36} color="#dc2626" />
             </View>
             <View style={styles.ratingText}>
-              <Text style={styles.ratingTitle}>Mala (2)</Text>
+              <Text style={styles.ratingTitle}>Mala</Text>
               <Text style={styles.ratingDescription}>Mal separados</Text>
             </View>
           </TouchableOpacity>
 
+          <View style={styles.divider} />
+
           <TouchableOpacity
-            style={[styles.ratingCard, styles.ratingVeryBad]}
-            onPress={() => handleRating('veryBad')}
+            style={[styles.ratingCard, styles.ratingNoCollection]}
+            onPress={handleNoCollection}
             disabled={saving}
           >
             <View style={styles.ratingIcon}>
-              <MaterialIcons name="block" size={36} color="#991b1b" />
+              <MaterialIcons name="block" size={36} color="#64748b" />
             </View>
             <View style={styles.ratingText}>
-              <Text style={styles.ratingTitle}>Muy Mala (1)</Text>
-              <Text style={styles.ratingDescription}>Sin separación</Text>
+              <Text style={styles.ratingTitle}>No se recolectó</Text>
+              <Text style={styles.ratingDescription}>Sin residuos en el hogar</Text>
             </View>
           </TouchableOpacity>
 
@@ -359,20 +340,23 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 3,
   },
-  ratingExcellent: {
+  ratingGood: {
     borderColor: '#10b981',
   },
-  ratingGood: {
-    borderColor: '#059669',
-  },
   ratingRegular: {
-    borderColor: '#d97706',
+    borderColor: '#f59e0b',
   },
   ratingBad: {
     borderColor: '#dc2626',
   },
-  ratingVeryBad: {
-    borderColor: '#991b1b',
+  ratingNoCollection: {
+    borderColor: '#64748b',
+    opacity: 0.8,
+  },
+  divider: {
+    height: 1,
+    backgroundColor: '#e2e8f0',
+    marginVertical: 16,
   },
   ratingIcon: {
     width: 56,
