@@ -24,8 +24,8 @@ public class AuthService
             if (user.Value == null || !user.Value.IsActive)
                 return null;
 
-            var passwordHash = HashPassword(password);
-            if (user.Value.PasswordHash == passwordHash)
+            // Comparación directa de contraseña
+            if (user.Value.PasswordHash == password)
                 return user.Value;
 
             return null;
@@ -56,7 +56,7 @@ public class AuthService
             PartitionKey = "User",
             RowKey = username,
             Username = username,
-            PasswordHash = HashPassword(password),
+            PasswordHash = password, // Guardar contraseña directamente
             Role = role,
             IsActive = true,
             CreatedAt = DateTime.UtcNow
@@ -64,14 +64,6 @@ public class AuthService
 
         await _tableClient.AddEntityAsync(user);
         return user;
-    }
-
-    public string HashPassword(string password)
-    {
-        using var sha256 = SHA256.Create();
-        var bytes = Encoding.UTF8.GetBytes(password);
-        var hash = sha256.ComputeHash(bytes);
-        return Convert.ToBase64String(hash);
     }
 
     public string GenerateToken(UserEntity user)
