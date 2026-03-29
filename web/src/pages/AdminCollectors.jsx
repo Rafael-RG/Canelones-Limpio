@@ -16,6 +16,7 @@ export default function AdminCollectors() {
   const [qrExport, setQrExport] = useState({ isOpen: false, code: '', name: '' });
   const [searchTerm, setSearchTerm] = useState('');
   const [showForm, setShowForm] = useState(false);
+  const [editingId, setEditingId] = useState(null);
 
   const filteredCollectors = collectors.filter(c => 
     c.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -29,16 +30,39 @@ export default function AdminCollectors() {
     setSuccessMessage('');
     
     try {
-      await createCollector(formData);
+      if (editingId) {
+        await updateCollector(editingId, formData);
+        setSuccessMessage('Recolector actualizado exitosamente');
+        setEditingId(null);
+      } else {
+        await createCollector(formData);
+        setSuccessMessage('Recolector creado exitosamente');
+      }
       setFormData({ id: '', name: '', document: '', shift: 'Mañana' });
-      setSuccessMessage('Recolector creado exitosamente');
       setShowForm(false);
       setTimeout(() => setSuccessMessage(''), 3000);
     } catch (err) {
-      alert(`Error al crear recolector: ${err.message}`);
+      alert(`Error al ${editingId ? 'actualizar' : 'crear'} recolector: ${err.message}`);
     } finally {
       setIsSubmitting(false);
     }
+  };
+
+  const handleEdit = (collector) => {
+    setFormData({
+      id: collector.id,
+      name: collector.name,
+      document: collector.document,
+      shift: collector.shift,
+    });
+    setEditingId(collector.id);
+    setShowForm(true);
+  };
+
+  const handleCancelEdit = () => {
+    setFormData({ id: '', name: '', document: '', shift: 'Mañana' });
+    setEditingId(null);
+    setShowForm(false);
   };
 
   const handleDelete = async (id) => {
@@ -83,7 +107,7 @@ export default function AdminCollectors() {
               <p className="text-slate-500">Gestione el personal operativo y genere credenciales QR.</p>
             </div>
             <button
-              onClick={() => setShowForm(!showForm)}
+              onClick={() => editingId ? handleCancelEdit() : setShowForm(!showForm)}
               className="bg-primary text-white px-4 py-2 rounded-lg font-bold hover:bg-primary/90 transition-colors"
             >
               {showForm ? 'Cancelar' : '+ Nuevo Recolector'}
@@ -106,8 +130,8 @@ export default function AdminCollectors() {
         {showForm && (
           <section className="bg-white border border-primary/10 rounded-xl p-6 shadow-sm">
           <h3 className="text-lg font-bold mb-6 flex items-center gap-2">
-            <span className="material-symbols-outlined text-primary">person_add</span>
-            Registrar Nuevo
+            <span className="material-symbols-outlined text-primary">{editingId ? 'edit' : 'person_add'}</span>
+            {editingId ? 'Editar Recolector' : 'Registrar Nuevo'}
           </h3>
           <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-4 gap-6 items-end">
             <div className="flex flex-col gap-2">
@@ -117,6 +141,7 @@ export default function AdminCollectors() {
                 placeholder="Ej: RM"
                 value={formData.id}
                 onChange={(e) => setFormData(prev => ({ ...prev, id: e.target.value }))}
+                disabled={!!editingId}
                 required
               />
             </div>
@@ -157,7 +182,7 @@ export default function AdminCollectors() {
               disabled={isSubmitting}
               className="bg-primary text-white font-bold py-3 px-8 rounded-lg md:col-span-4 justify-self-end hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {isSubmitting ? 'Guardando...' : 'Guardar Registro'}
+              {isSubmitting ? 'Guardando...' : (editingId ? 'Actualizar' : 'Guardar Registro')}
             </button>
           </form>
         </section>
@@ -230,6 +255,13 @@ export default function AdminCollectors() {
                         title="Exportar QR"
                       >
                         <span className="material-symbols-outlined text-sm align-middle">qr_code</span>
+                      </button>
+                      <button 
+                        onClick={() => handleEdit(c)}
+                        className="px-3 py-1.5 bg-amber-100 text-amber-700 rounded-lg text-xs font-bold hover:bg-amber-200 transition-colors"
+                        title="Editar"
+                      >
+                        <span className="material-symbols-outlined text-sm align-middle">edit</span>
                       </button>
                       <button 
                         onClick={() => handleStatusToggle(c)}

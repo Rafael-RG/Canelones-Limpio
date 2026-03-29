@@ -12,6 +12,7 @@ export default function AdminFleet() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showForm, setShowForm] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
+  const [editingId, setEditingId] = useState(null);
 
   const filteredVehicles = vehicles.filter(v => 
     v.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -24,14 +25,35 @@ export default function AdminFleet() {
     setIsSubmitting(true);
     
     try {
-      await createVehicle(formData);
+      if (editingId) {
+        await updateVehicle(editingId, formData);
+        setEditingId(null);
+      } else {
+        await createVehicle(formData);
+      }
       setFormData({ id: '', type: 'Carga Trasera', capacity: '' });
       setShowForm(false);
     } catch (err) {
-      alert(`Error al crear vehículo: ${err.message}`);
+      alert(`Error al ${editingId ? 'actualizar' : 'crear'} vehículo: ${err.message}`);
     } finally {
       setIsSubmitting(false);
     }
+  };
+
+  const handleEdit = (vehicle) => {
+    setFormData({
+      id: vehicle.id,
+      type: vehicle.type,
+      capacity: vehicle.capacity,
+    });
+    setEditingId(vehicle.id);
+    setShowForm(true);
+  };
+
+  const handleCancelEdit = () => {
+    setFormData({ id: '', type: 'Carga Trasera', capacity: '' });
+    setEditingId(null);
+    setShowForm(false);
   };
 
   const handleStatusChange = async (vehicle) => {
@@ -86,7 +108,7 @@ export default function AdminFleet() {
               <p className="text-slate-500">Supervise las unidades de transporte.</p>
             </div>
             <button
-              onClick={() => setShowForm(!showForm)}
+              onClick={() => editingId ? handleCancelEdit() : setShowForm(!showForm)}
               className="bg-primary text-white px-4 py-2 rounded-lg font-bold hover:bg-primary/90 transition-colors"
             >
               {showForm ? 'Cancelar' : '+ Nuevo Vehículo'}
@@ -102,7 +124,10 @@ export default function AdminFleet() {
 
         {showForm && (
           <section className="bg-white border border-primary/10 rounded-xl p-6 shadow-sm">
-            <h3 className="text-lg font-bold mb-6">Registrar Nuevo Vehículo</h3>
+            <h3 className="text-lg font-bold mb-6 flex items-center gap-2">
+              <span className="material-symbols-outlined text-primary">{editingId ? 'edit' : 'add'}</span>
+              {editingId ? 'Editar Vehículo' : 'Registrar Nuevo Vehículo'}
+            </h3>
             <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-3 gap-6">
               <div className="flex flex-col gap-2">
                 <label className="text-sm font-semibold">ID del Vehículo</label>
@@ -111,6 +136,7 @@ export default function AdminFleet() {
                   placeholder="Ej: MT-1024"
                   value={formData.id}
                   onChange={(e) => setFormData(prev => ({ ...prev, id: e.target.value }))}
+                  disabled={!!editingId}
                   required
                 />
               </div>
@@ -142,7 +168,7 @@ export default function AdminFleet() {
                 disabled={isSubmitting}
                 className="md:col-span-3 bg-primary text-white font-bold py-3 px-8 rounded-lg justify-self-end hover:bg-primary/90 transition-colors disabled:opacity-50"
               >
-                {isSubmitting ? 'Guardando...' : 'Guardar Vehículo'}
+                {isSubmitting ? 'Guardando...' : (editingId ? 'Actualizar' : 'Guardar Vehículo')}
               </button>
             </form>
           </section>
@@ -201,6 +227,13 @@ export default function AdminFleet() {
                   >
                     {unit.status}
                   </span>
+                  <button 
+                    onClick={() => handleEdit(unit)}
+                    className="px-3 py-1.5 bg-amber-100 text-amber-700 rounded-lg text-xs font-bold hover:bg-amber-200 transition-colors"
+                    title="Editar"
+                  >
+                    <span className="material-symbols-outlined text-sm">edit</span>
+                  </button>
                   <button 
                     onClick={() => handleStatusChange(unit)}
                     className="px-3 py-1.5 bg-blue-100 text-blue-700 rounded-lg text-xs font-bold hover:bg-blue-200 transition-colors"

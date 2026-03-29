@@ -4,7 +4,7 @@ import { useHouseholds } from '../hooks/useApi';
 import QRExportDialog from '../components/QRExportDialog';
 
 export default function AdminHousing() {
-  const { households, loading, error, createHousehold, deleteHousehold } = useHouseholds();
+  const { households, loading, error, createHousehold, deleteHousehold, updateHousehold } = useHouseholds();
   const [formData, setFormData] = useState({
     id: '',
     address: '',
@@ -15,6 +15,7 @@ export default function AdminHousing() {
   const [qrExport, setQrExport] = useState({ isOpen: false, code: '', name: '' });
   const [searchTerm, setSearchTerm] = useState('');
   const [showForm, setShowForm] = useState(false);
+  const [editingId, setEditingId] = useState(null);
 
   const filteredHouseholds = households.filter(h => 
     h.address.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -27,16 +28,37 @@ export default function AdminHousing() {
     setIsSubmitting(true);
     
     try {
-      // Generar QR code simple si no se proporciona
       const qrCode = formData.qrCode || `QR-${Date.now()}`;
-      await createHousehold({ ...formData, qrCode });
+      if (editingId) {
+        await updateHousehold(editingId, { ...formData, qrCode });
+        setEditingId(null);
+      } else {
+        await createHousehold({ ...formData, qrCode });
+      }
       setFormData({ id: '', address: '', zone: '', qrCode: '' });
       setShowForm(false);
     } catch (err) {
-      alert(`Error al crear vivienda: ${err.message}`);
+      alert(`Error al ${editingId ? 'actualizar' : 'crear'} vivienda: ${err.message}`);
     } finally {
       setIsSubmitting(false);
     }
+  };
+
+  const handleEdit = (household) => {
+    setFormData({
+      id: household.id,
+      address: household.address,
+      zone: household.zone,
+      qrCode: household.qrCode,
+    });
+    setEditingId(household.id);
+    setShowForm(true);
+  };
+
+  const handleCancelEdit = () => {
+    setFormData({ id: '', address: '', zone: '', qrCode: '' });
+    setEditingId(null);
+    setShowForm(false);
   };
 
   const handleDelete = async (id) => {
@@ -72,7 +94,7 @@ export default function AdminHousing() {
               <p className="text-slate-500">Administre el padrón de domicilios y genere identificadores QR.</p>
             </div>
             <button
-              onClick={() => setShowForm(!showForm)}
+              onClick={() => editingId ? handleCancelEdit() : setShowForm(!showForm)}
               className="bg-primary text-white px-4 py-2 rounded-lg font-bold hover:bg-primary/90 transition-colors"
             >
               {showForm ? 'Cancelar' : '+ Nueva Vivienda'}
@@ -89,8 +111,8 @@ export default function AdminHousing() {
         {showForm && (
           <section className="bg-white border border-primary/10 rounded-xl p-6 shadow-sm max-w-2xl">
             <h3 className="mb-4 text-xl font-bold flex items-center gap-2">
-              <span className="material-symbols-outlined text-primary">add_home</span>
-              Nueva Vivienda
+              <span className="material-symbols-outlined text-primary">{editingId ? 'edit' : 'add_home'}</span>
+              {editingId ? 'Editar Vivienda' : 'Nueva Vivienda'}
             </h3>
             <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
@@ -100,6 +122,7 @@ export default function AdminHousing() {
                     placeholder="Ej: ID-8829-X"
                     value={formData.id}
                     onChange={(e) => setFormData(prev => ({ ...prev, id: e.target.value }))}
+                    disabled={!!editingId}
                     required
                   />
                 </div>
@@ -137,7 +160,7 @@ export default function AdminHousing() {
                   disabled={isSubmitting}
                   className="md:col-span-2 bg-primary text-white font-bold py-3 px-8 rounded-lg justify-self-end hover:bg-primary/90 transition-colors disabled:opacity-50"
                 >
-                  {isSubmitting ? 'Guardando...' : 'Generar QR y Guardar'}
+                  {isSubmitting ? 'Guardando...' : (editingId ? 'Actualizar' : 'Generar QR y Guardar')}
                 </button>
               </form>
           </section>
@@ -215,6 +238,13 @@ export default function AdminHousing() {
                             title="Exportar QR"
                           >
                             <span className="material-symbols-outlined text-base">qr_code</span>
+                          </button>
+                          <button 
+                            onClick={() => handleEdit(h)}
+                            className="text-slate-400 mx-1 hover:text-amber-600 transition-colors"
+                            title="Editar"
+                          >
+                            <span className="material-symbols-outlined text-base">edit</span>
                           </button>
                           <button 
                             onClick={() => handleDelete(h.id)}
