@@ -1,6 +1,18 @@
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
 
 export default function AdminLayout({ children }) {
+  const navigate = useNavigate();
+  const { logout, user } = useAuth();
+
+  const handleLogout = () => {
+    if (confirm('¿Está seguro que desea cerrar sesión?')) {
+      logout();
+      navigate('/login');
+    }
+  };
+
   return (
     <div className="relative flex h-screen w-full flex-col overflow-hidden">
       <header className="flex items-center justify-between whitespace-nowrap border-b border-solid border-primary/10 bg-white px-10 py-3">
@@ -13,10 +25,20 @@ export default function AdminLayout({ children }) {
           <h2 className="text-slate-900 text-lg font-bold leading-tight tracking-[-0.015em]">Canelones Limpio</h2>
         </div>
         <div className="flex flex-1 justify-end gap-4 items-center">
+          <div className="hidden lg:flex items-center gap-3 text-sm">
+            <span className="text-slate-600">Usuario:</span>
+            <span className="font-semibold text-slate-900">{user?.username}</span>
+          </div>
           <button className="bg-primary/10 text-primary p-2 rounded-lg hover:bg-primary/20">
             <span className="material-symbols-outlined">notifications</span>
           </button>
-          <div className="h-10 w-10 rounded-full border-2 border-primary/20 bg-gray-300"></div>
+          <button 
+            onClick={handleLogout}
+            className="bg-red-50 text-red-600 p-2 rounded-lg hover:bg-red-100 transition-colors"
+            title="Cerrar sesión"
+          >
+            <span className="material-symbols-outlined">logout</span>
+          </button>
         </div>
       </header>
 

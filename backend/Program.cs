@@ -36,6 +36,7 @@ if (string.IsNullOrEmpty(connectionString))
 builder.Services.AddSingleton(new TableServiceClient(connectionString));
 
 // Register application services
+builder.Services.AddSingleton<AuthService>();
 builder.Services.AddSingleton<CollectorService>();
 builder.Services.AddSingleton<VehicleService>();
 builder.Services.AddSingleton<HouseholdService>();

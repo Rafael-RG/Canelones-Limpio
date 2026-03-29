@@ -10,10 +10,14 @@ class ApiService {
   async request(endpoint, options = {}) {
     const url = `${this.baseURL}${endpoint}`;
     
+    // Agregar token de autenticación si existe
+    const token = localStorage.getItem('token');
+    
     const config = {
       ...options,
       headers: {
         'Content-Type': 'application/json',
+        ...(token && { 'Authorization': `Bearer ${token}` }),
         ...options.headers,
       },
     };
@@ -191,6 +195,17 @@ class ApiService {
   // DASHBOARD
   async getDashboardStats() {
     return this.request('/dashboard/stats');
+  }
+  // AUTHENTICATION
+  async login(username, password) {
+    return this.request('/auth/login', {
+      method: 'POST',
+      body: JSON.stringify({ username, password }),
+    });
+  }
+
+  async validateToken() {
+    return this.request('/auth/validate');
   }
 }
 
