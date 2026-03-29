@@ -46,6 +46,9 @@ builder.Services.AddSingleton<DashboardService>();
 
 var app = builder.Build();
 
+// Initialize database: create tables and default admin user
+await InitializeDatabaseAsync(app.Services);
+
 // Configure the HTTP request pipeline
 app.UseSwagger();
 app.UseSwaggerUI(c =>
@@ -62,4 +65,44 @@ app.UseAuthorization();
 app.MapControllers();
 
 app.Run();
+
+static async Task InitializeDatabaseAsync(IServiceProvider services)
+{
+    try
+    {
+        var tableServiceClient = services.GetRequiredService<TableServiceClient>();
+        var authService = services.GetRequiredService<AuthService>();
+
+        // Create Users table if it doesn't exist
+        var usersTableClient = tableServiceClient.GetTableClient("Users");
+        await usersTableClient.CreateIfNotExistsAsync();
+        Console.WriteLine("✓ Users table verified/created");
+
+        // Check if admin user exists
+        try
+        {
+            var adminUser = await authService.GetUserAsync("admin");
+            if (adminUser == null)
+            {
+                // Create default admin user
+                await authService.CreateUserAsync("admin", "admin123", "Admin");
+                Console.WriteLine("✓ Default admin user created (username: admin, password: admin123)");
+            }
+            else
+            {
+                Console.WriteLine("✓ Admin user already exists");
+            }
+        }
+        catch
+        {
+            // User doesn't exist, create it
+            await authService.CreateUserAsync("admin", "admin123", "Admin");
+            Console.WriteLine("✓ Default admin user created (username: admin, password: admin123)");
+        }
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"⚠ Error initializing database: {ex.Message}");
+    }
+}
 

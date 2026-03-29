@@ -1,5 +1,5 @@
 // Configuración de la API
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://localhost:7001/api';
+const API_BASE_URL = 'http://localhost:8080/api'; // Backend local para pruebas
 
 class ApiService {
   constructor() {

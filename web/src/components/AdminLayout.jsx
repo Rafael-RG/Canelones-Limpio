@@ -1,16 +1,23 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 
 export default function AdminLayout({ children }) {
   const navigate = useNavigate();
   const { logout, user } = useAuth();
+  const [showLogoutModal, setShowLogoutModal] = useState(false);
 
   const handleLogout = () => {
-    if (confirm('¿Está seguro que desea cerrar sesión?')) {
-      logout();
-      navigate('/login');
-    }
+    logout();
+    navigate('/login');
+  };
+
+  const openLogoutModal = () => {
+    setShowLogoutModal(true);
+  };
+
+  const closeLogoutModal = () => {
+    setShowLogoutModal(false);
   };
 
   return (
@@ -33,8 +40,8 @@ export default function AdminLayout({ children }) {
             <span className="material-symbols-outlined">notifications</span>
           </button>
           <button 
-            onClick={handleLogout}
-            className="bg-red-50 text-red-600 p-2 rounded-lg hover:bg-red-100 transition-colors"
+            onClick={openLogoutModal}
+            className="bg-primary/10 text-primary p-2 rounded-lg hover:bg-primary/20 transition-colors"
             title="Cerrar sesión"
           >
             <span className="material-symbols-outlined">logout</span>
@@ -78,6 +85,53 @@ export default function AdminLayout({ children }) {
           {children}
         </main>
       </div>
+
+      {/* Modal de confirmación de cierre de sesión */}
+      {showLogoutModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm animate-fadeIn">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md mx-4 overflow-hidden animate-slideUp">
+            {/* Header del modal */}
+            <div className="bg-primary px-6 py-4 flex items-center gap-3">
+              <div className="bg-white/20 p-2 rounded-full">
+                <span className="material-symbols-outlined text-white text-2xl">logout</span>
+              </div>
+              <h3 className="text-white text-xl font-bold">Cerrar Sesión</h3>
+            </div>
+
+            {/* Contenido del modal */}
+            <div className="p-6">
+              <p className="text-slate-700 text-base leading-relaxed mb-4">
+                ¿Está seguro que desea cerrar sesión?
+              </p>
+              <div className="bg-primary/5 rounded-lg p-4 flex items-center gap-3 border border-primary/20">
+                <div className="bg-primary/10 p-2 rounded-full">
+                  <span className="material-symbols-outlined text-primary">person</span>
+                </div>
+                <div>
+                  <p className="text-xs text-slate-500">Usuario actual</p>
+                  <p className="text-sm font-semibold text-slate-900">{user?.username}</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Botones de acción */}
+            <div className="px-6 pb-6 flex gap-3">
+              <button
+                onClick={closeLogoutModal}
+                className="flex-1 px-4 py-2.5 rounded-lg border-2 border-slate-300 text-slate-700 font-medium hover:bg-slate-50 transition-colors"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={handleLogout}
+                className="flex-1 px-4 py-2.5 rounded-lg bg-primary text-white font-medium hover:bg-primary/90 transition-all shadow-lg shadow-primary/30"
+              >
+                Cerrar Sesión
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
